@@ -76,8 +76,12 @@ class App:
 
     def run(self):
         try:
-            platform = detect_platform(self.url)
-            courses = platform.discover(self.url, self.session())
+            try:
+                platform = detect_platform(self.url)
+                courses = platform.discover(self.url, self.session())
+            except Exception as exc:
+                print_line(f"[red]Erro ao descobrir cursos:[/red] {exc}")
+                return
             print_line(f"Plataforma: [bold]{platform.name}[/bold] | {len(courses)} curso(s).")
 
             for course in courses:
@@ -85,7 +89,12 @@ class App:
                     cid = course.get("course_id", course.get("id", ""))
                     if cid not in self.only_courses and course.get("slug", "") not in self.only_courses:
                         continue
-                lessons = platform.list_lessons(course, self.session())
+                try:
+                    lessons = platform.list_lessons(course, self.session())
+                except Exception as exc:
+                    title = course.get("title") or course.get("id") or "?"
+                    print_line(f"  [red]Erro ao listar aulas de {title}:[/red] {exc}")
+                    continue
                 lessons = [
                     (idx, lesson)
                     for idx, lesson in enumerate(lessons, start=1)
@@ -97,7 +106,11 @@ class App:
                 chapter = (lessons[0][1].get("chapter") or course.get("title") or course.get("id")) if lessons else (course.get("title") or course.get("id"))
                 print_line()
                 print_line(f"[bold underline]== {chapter}[/bold underline]  [dim]({len(lessons)} aula(s))[/dim]")
-                self._process_chapter(platform, course, lessons)
+                try:
+                    self._process_chapter(platform, course, lessons)
+                except Exception as exc:
+                    title = course.get("title") or course.get("id") or "?"
+                    print_line(f"  [red]Erro ao processar {title}:[/red] {exc}")
         finally:
             if self.cookie_file:
                 try:
@@ -189,15 +202,30 @@ class App:
             "comment": lesson["url"],
         }
 
-        try:
-            lesson_dir.mkdir(parents=True, exist_ok=True)
+        def _do_download():
             downloader.download_ytdlp(
                 stream["url"], dest_mp4, metadata, self.cookie_file, self.ffmpeg,
                 on_progress, stream.get("format", "bestvideo+bestaudio/best"), self.concurrent,
             )
-            return {"lesson": lesson, "status": "baixado"}
-        except Exception as exc:
-            return {"lesson": lesson, "status": "erro", "error": str(exc)}
+
+        try:
+            lesson_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                _do_download()
+                return {"lesson": lesson, "status": "baixado"}
+            except Exception as exc:
+                err = str(exc)
+                if "Netscape format" in err and self.cookie_jar is not None:
+                    old_cookie = self.cookie_file
+                    if old_cookie:
+                        try:
+                            os.unlink(old_cookie)
+                        except OSError:
+                            pass
+                    self.cookie_file = write_netscape_cookie_file(self.cookie_jar, self.host)
+                    _do_download()
+                    return {"lesson": lesson, "status": "baixado"}
+                return {"lesson": lesson, "status": "erro", "error": err}
         finally:
             bar.close()
 
