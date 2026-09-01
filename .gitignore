@@ -3,6 +3,11 @@ __pycache__/
 *$py.class
 *.so
 
+build/
+dist/
+*.egg-info/
+*.egg
+
 .idea/
 .vscode/
 *.swp
