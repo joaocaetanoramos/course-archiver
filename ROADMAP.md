@@ -1,5 +1,40 @@
 # Roadmap
 
+Features planned for future versions.
+
+## 1. Chrome extension for cookie extraction
+- Browser extension that extracts cookies (and localStorage tokens when needed, e.g. Kiwify/Hotmart) from the current domain.
+- Direct integration with `course-archiver`: the extension exports a cookies file ready to use.
+- Motivation: today the user has to export cookies manually via third-party extensions.
+
+## 2. Download of supplementary materials
+- Some lessons have attached files (PDFs, spreadsheets, audio, support material).
+- Extend the adapters to, beyond the video, extract and download the attachments of each lesson into the same folder.
+- Sources already mapped:
+  - **Kiwify**: `lesson.files` in the lesson response.
+  - **Hotmart**: non-video `medias` and `complementary-content`.
+  - **Astron Members**: investigate the attachment field on the lesson page.
+
+## 3. Curseduca — lesson discovery
+- Domain detection (`*.curseduca.pro`) already works; lesson listing still pending (via `clas.curseduca.pro` `menus/current` + `contents/{id}` and `player.curseduca.com/videos/bulk`).
+- The cookie provides `api_key` + `access_token` (JWT), which simplifies authentication.
+
+## 4. More platform adapters
+The architecture was designed to be extensible. Platform candidates:
+- Udemy (domain-restricted player)
+- Domestika
+- School Maker / Hotmart Sparkle
+- Membertoo / Kirvano / PerfectPay
+
+## 5. Packaging
+- `pyinstaller` to generate a standalone binary.
+- Distribution via `pipx` or `pip install course-archiver`.
+- Installation documentation for Windows / macOS / Linux.
+
+---
+
+# Roadmap (versão em Português)
+
 Funcionalidades planejadas para versões futuras.
 
 ## 1. Extensão do Chrome para extração de cookies
@@ -17,10 +52,10 @@ Funcionalidades planejadas para versões futuras.
 
 ## 3. Curseduca — descoberta de aulas
 - A detecção (`*.curseduca.pro`) já existe; falta implementar a listagem de aulas via `clas.curseduca.pro` (`menus/current` + `contents/{id}`) e `player.curseduca.com/videos/bulk`.
-- O cookie fornecido já contém `api_key` + `access_token` (JWT), o que facilita a autenticação.
+- O cookie fornece `api_key` + `access_token` (JWT), o que facilita a autenticação.
 
 ## 4. Mais adaptadores de plataforma
-A arquitetura foi desenhada para ser extensível. Plataformas candidatas:
+A arquitetura foi projetada para ser extensível. Plataformas candidatas:
 - Udemy (player restrito a domínios)
 - Domestika
 - School Maker / Hotmart Sparkle
@@ -29,4 +64,4 @@ A arquitetura foi desenhada para ser extensível. Plataformas candidatas:
 ## 5. Empacotamento
 - `pyinstaller` para gerar binário standalone.
 - Distribuição via `pipx` ou `pip install course-archiver`.
-- Documentação de instalação para Windows/macOS/Linux.
+- Documentação de instalação para Windows / macOS / Linux.
