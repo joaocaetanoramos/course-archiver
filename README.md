@@ -25,16 +25,35 @@ A Python CLI tool to download online course videos for **offline viewing**, usin
 
 ## Installation
 
+### Recommended: install as a CLI tool (run `course-archiver` from anywhere)
+
+```bash
+git clone https://github.com/joaocaetanoramos/course-archiver.git
+cd course-archiver
+pip install .
+```
+
+This installs the `course-archiver` command on your `PATH` (typically `~/.local/bin`), so you can run it from any directory:
+
+```bash
+course-archiver --cookies cookie.txt "<COURSE_URL>"
+```
+
+Dependencies (Python deps + `ffmpeg`) are installed automatically.
+
+### Alternative: run from source without installing
+
 ```bash
 git clone https://github.com/joaocaetanoramos/course-archiver.git
 cd course-archiver
 pip install -r requirements.txt
+python extrator.py --cookies cookie.txt "<COURSE_URL>"
 ```
 
 External requirements:
 - **Python 3.10+**
 - **ffmpeg** (`sudo dnf install ffmpeg` / `brew install ffmpeg` / etc.)
-- **pycryptodomex** (installed via `requirements.txt` — used for native AES-128 HLS decryption)
+- **pycryptodomex** (installed via `requirements.txt` or the `pip install .` dependencies — used for native AES-128 HLS decryption)
 
 ## How to obtain the cookie
 
@@ -148,16 +167,35 @@ Ferramenta CLI em Python para baixar cursos online (vídeos) para assistir **off
 
 ## Instalação
 
+### Recomendado: instalar como CLI (rode `course-archiver` de qualquer lugar)
+
+```bash
+git clone https://github.com/joaocaetanoramos/course-archiver.git
+cd course-archiver
+pip install .
+```
+
+Isso instala o comando `course-archiver` no seu `PATH` (geralmente `~/.local/bin`), então você pode rodar de qualquer pasta:
+
+```bash
+course-archiver --cookies cookie.txt "<URL_DO_CURSO>"
+```
+
+As dependências (pacotes Python + `ffmpeg`) são instaladas automaticamente.
+
+### Alternativa: rodar direto da fonte sem instalar
+
 ```bash
 git clone https://github.com/joaocaetanoramos/course-archiver.git
 cd course-archiver
 pip install -r requirements.txt
+python extrator.py --cookies cookie.txt "<URL_DO_CURSO>"
 ```
 
 Requisitos externos:
 - **Python 3.10+**
 - **ffmpeg** (`sudo dnf install ffmpeg` / `brew install ffmpeg`)
-- **pycryptodomex** (instalado via `requirements.txt` — descriptografia HLS AES-128 nativa)
+- **pycryptodomex** (instalado via `requirements.txt` ou pelas dependências do `pip install .` — usado para descriptografia HLS AES-128 nativa)
 
 ## Como obter o cookie
 
