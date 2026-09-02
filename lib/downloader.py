@@ -24,6 +24,10 @@ def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fm
         "progress_hooks": [hook],
         "concurrent_fragment_downloads": int(concurrent),
         "merge_output_format": "mp4",
+        "retries": 10,
+        "fragment_retries": 10,
+        "skip_unavailable_fragments": False,
+        "keep_fragments": False,
     }
     if ffmpeg:
         opts["ffmpeg_location"] = ffmpeg

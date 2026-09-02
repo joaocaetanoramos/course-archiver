@@ -3,9 +3,11 @@
 
 import argparse
 import os
+import random
 import re
 import shutil
 import threading
+import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -48,7 +50,7 @@ def sanitize_filename(name):
 
 
 class App:
-    def __init__(self, url, cookies, output, parallel, dry_run, ffmpeg, only_courses, only_lessons, concurrent):
+    def __init__(self, url, cookies, output, parallel, dry_run, ffmpeg, only_courses, only_lessons, concurrent, retries):
         self.url = url
         self.host = urlparse(url).netloc
         self.cookie_jar = load_cookies(cookies, self.host)
@@ -59,11 +61,13 @@ class App:
         self.output_dir = Path(output)
         self.parallel = max(1, int(parallel))
         self.concurrent = max(1, int(concurrent))
+        self.retries = max(1, int(retries))
         self.dry_run = dry_run
         self.ffmpeg = ffmpeg or find_ffmpeg()
         self.only_courses = set(filter(None, (only_courses or "").split(",")))
         self.only_lessons = set(filter(None, (only_lessons or "").split(",")))
         self._tls = threading.local()
+        self._concurrent_lock = threading.Lock()
 
     def session(self):
         s = getattr(self._tls, "session", None)
@@ -165,6 +169,16 @@ class App:
         skipped = sum(1 for r in results if r.get("status") == "sem-video")
         print_line(f"  → {ok} baixado(s), {skipped} sem vídeo, {errs} erro(s).")
 
+    def _throttle_down(self):
+        with self._concurrent_lock:
+            if self.concurrent > 1:
+                new_val = max(1, self.concurrent // 2)
+                print_line(
+                    f"  [yellow]Conexão instável — reduzindo segmentos por vídeo de "
+                    f"{self.concurrent} para {new_val}.[/yellow]"
+                )
+                self.concurrent = new_val
+
     def _process_lesson(self, platform, course, lesson, idx):
         session = self.session()
         group = lesson.get("group") or ""
@@ -208,24 +222,59 @@ class App:
                 on_progress, stream.get("format", "bestvideo+bestaudio/best"), self.concurrent,
             )
 
+        def _is_connection_error(exc):
+            msg = repr(exc) + str(exc)
+            return (
+                "Connection reset" in msg
+                or "Connection aborted" in msg
+                or "Read timed out" in msg
+                or "timed out" in msg.lower()
+            )
+
         try:
             lesson_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                _do_download()
-                return {"lesson": lesson, "status": "baixado"}
-            except Exception as exc:
-                err = str(exc)
-                if "Netscape format" in err and self.cookie_jar is not None:
-                    old_cookie = self.cookie_file
-                    if old_cookie:
-                        try:
-                            os.unlink(old_cookie)
-                        except OSError:
-                            pass
-                    self.cookie_file = write_netscape_cookie_file(self.cookie_jar, self.host)
+            last_exc = None
+            cookie_regenerated = False
+            for attempt in range(self.retries):
+                try:
                     _do_download()
                     return {"lesson": lesson, "status": "baixado"}
-                return {"lesson": lesson, "status": "erro", "error": err}
+                except Exception as exc:
+                    err = str(exc)
+                    last_exc = exc
+                    is_conn = _is_connection_error(exc)
+                    is_cookie = "Netscape format" in err
+
+                    if is_cookie and self.cookie_jar is not None and not cookie_regenerated:
+                        old_cookie = self.cookie_file
+                        if old_cookie:
+                            try:
+                                os.unlink(old_cookie)
+                            except OSError:
+                                pass
+                        self.cookie_file = write_netscape_cookie_file(self.cookie_jar, self.host)
+                        cookie_regenerated = True
+                        continue
+
+                    if is_conn:
+                        self._throttle_down()
+
+                    is_last = attempt + 1 >= self.retries
+                    if is_last:
+                        break
+
+                    backoff = min(30.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1.0)
+                    print_line(
+                        f"  [yellow]Erro de rede ({attempt + 1}/{self.retries}): "
+                        f"{type(exc).__name__} — retentando em {backoff:.1f}s[/yellow]"
+                    )
+                    time.sleep(backoff)
+
+            return {
+                "lesson": lesson,
+                "status": "erro",
+                "error": f"{type(last_exc).__name__}: {last_exc}",
+            }
         finally:
             bar.close()
 
@@ -242,6 +291,7 @@ def main():
     parser.add_argument("--output", default="./downloads", help="Diretório de saída")
     parser.add_argument("--parallel", type=int, default=1, help="Número de downloads em paralelo")
     parser.add_argument("--concurrent", type=int, default=8, help="Segmentos baixados em paralelo por vídeo")
+    parser.add_argument("--retries", type=int, default=3, help="Tentativas por aula em caso de erro de rede transitório")
     parser.add_argument("--dry-run", action="store_true", help="Apenas lista cursos/aulas sem baixar")
     parser.add_argument("--ffmpeg", help="Caminho do executável ffmpeg (opcional)")
     parser.add_argument("--course", help="Filtra por slug ou id de curso (separado por vírgula)")
@@ -258,6 +308,7 @@ def main():
         only_courses=args.course,
         only_lessons=args.lesson,
         concurrent=args.concurrent,
+        retries=args.retries,
     )
     if not app.dry_run and not app.ffmpeg:
         raise SystemExit("ffmpeg não encontrado. Instale ou defina FFMPEG_PATH.")
