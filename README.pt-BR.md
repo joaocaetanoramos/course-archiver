@@ -1,8 +1,22 @@
-# course-archiver
+<p align="center">
+  <img src="course-archiver.png" alt="course-archiver" width="460">
+</p>
 
-Uma ferramenta CLI em Python para **baixar vídeos de cursos online para assistir offline**, usando o **próprio cookie de sessão** como autenticação. Funciona como um backup pessoal do conteúdo que você já comprou e tem acesso autenticado.
+<h3 align="center">
+  Ferramenta CLI multi-plataforma para baixar vídeos de cursos online para assistir offline 🎬
+  <br/>
+  <sub>Remux lossless (-c copy) · Downloads paralelos · Adaptadores plugáveis</sub>
+</h3>
 
-> Suporte multi-plataforma via adaptadores plugáveis. Remux lossless (`-c copy`), downloads paralelos, UI rica em progresso. Projetada para ser extensível.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT"></a>
+  &nbsp;
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10+-blue.svg?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+"></a>
+  &nbsp;
+  <a href="https://github.com/joaocaetanoramos/course-archiver/stargazers"><img src="https://img.shields.io/github/stars/joaocaetanoramos/course-archiver?style=flat-square&logo=github" alt="GitHub stars"></a>
+  &nbsp;
+  <a href="https://github.com/joaocaetanoramos/course-archiver/releases"><img src="https://img.shields.io/github/v/release/joaocaetanoramos/course-archiver?style=flat-square" alt="GitHub release"></a>
+</p>
 
 ---
 
