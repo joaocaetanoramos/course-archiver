@@ -4,8 +4,16 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 
 
+class AuthError(Exception):
+    """Raised when the platform returns 401/403 — usually an expired cookie."""
+
+
 def get_json(session, url, headers=None, timeout=20):
     resp = session.get(url, headers=headers, timeout=timeout)
+    if resp.status_code in (401, 403):
+        raise AuthError(
+            f"HTTP {resp.status_code} (autenticação) em {url}"
+        )
     if resp.status_code != 200:
         raise RuntimeError(f"HTTP {resp.status_code} em {url}: {resp.text[:200]}")
     return resp.json()

@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 from lib import downloader, streams
 from lib.cookies import TolerantSession, load_cookies, validate_cookie_file, write_netscape_cookie_file
-from lib.platforms import detect_platform
+from lib.platforms import AuthError, detect_platform
 from lib.progress import ProgressBar, print_line
 
 USER_AGENT = (
@@ -83,6 +83,13 @@ class App:
             try:
                 platform = detect_platform(self.url)
                 courses = platform.discover(self.url, self.session())
+            except AuthError as exc:
+                print_line(f"[red]Erro de autenticação:[/red] {exc}")
+                print_line(
+                    "[yellow]Seu cookie pode ter expirado ou não ter permissão para esta URL. "
+                    "Reexporte o cookie do navegador logado na plataforma.[/yellow]"
+                )
+                return
             except Exception as exc:
                 print_line(f"[red]Erro ao descobrir cursos:[/red] {exc}")
                 return
@@ -95,6 +102,10 @@ class App:
                         continue
                 try:
                     lessons = platform.list_lessons(course, self.session())
+                except AuthError as exc:
+                    title = course.get("title") or course.get("id") or "?"
+                    print_line(f"  [red]Erro de autenticação em {title}:[/red] {exc}")
+                    continue
                 except Exception as exc:
                     title = course.get("title") or course.get("id") or "?"
                     print_line(f"  [red]Erro ao listar aulas de {title}:[/red] {exc}")
