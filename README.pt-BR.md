@@ -107,6 +107,37 @@ python extrator.py --cookies cookie.txt "<URL_DO_CURSO>"
 - **ffmpeg** (`sudo dnf install ffmpeg` / `brew install ffmpeg` / `apt install ffmpeg` / `pip install static-ffmpeg`)
 - **pycryptodomex** (instalado automaticamente via `pip install .` ou `pip install -r requirements.txt`) — usado para descriptografia nativa de HLS AES-128.
 
+### Atualizando
+
+Se você instalou via `pip install .` a partir de um clone local do repo:
+
+```bash
+cd /caminho/para/course-archiver
+git pull
+pip install --upgrade .
+```
+
+Se você instalou direto do GitHub (sem clone):
+
+```bash
+pip install --upgrade --force-reinstall "git+https://github.com/joaocaetanoramos/course-archiver.git"
+```
+
+Para verificar a versão instalada:
+
+```bash
+pip show course-archiver
+```
+
+Se você roda direto da fonte sem instalar:
+
+```bash
+cd /caminho/para/course-archiver
+git pull
+```
+
+(Rode `pip install -r requirements.txt` novamente só se as dependências mudarem.)
+
 ## Como obter o cookie
 
 A ferramenta **exige** o cookie da sua sessão logada. A autenticação é sua responsabilidade — a ferramenta nunca embute credenciais.
