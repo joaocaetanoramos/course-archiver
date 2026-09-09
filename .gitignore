@@ -20,3 +20,10 @@ Thumbs.db
 cookies_*.txt
 cookie*.txt
 downloads/
+
+# Local test fixtures (HAR / cookies / dev folders) — NEVER commit
+dev-*/
+dev-test-*/
+*.har
+*.colada*.png
+*Imagem*.png

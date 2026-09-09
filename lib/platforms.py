@@ -10,12 +10,23 @@ class AuthError(Exception):
 
 def get_json(session, url, headers=None, timeout=20):
     resp = session.get(url, headers=headers, timeout=timeout)
+    content_type = resp.headers.get("content-type", "")
+    body = resp.text
+
     if resp.status_code in (401, 403):
-        raise AuthError(
-            f"HTTP {resp.status_code} (autenticação) em {url}"
-        )
+        if "text/html" in content_type and ("fazer login" in body.lower()
+                                            or "login" in body.lower()[:2000]
+                                            or "cloudflare" in body.lower()[:2000]):
+            raise AuthError(
+                f"HTTP {resp.status_code} — gateway exibiu página de login (Cloudflare Access/SSO) em {url}. "
+                "Seu cookie pode estar sem clearance do Cloudflare para *.cb.hotmart.com "
+                "ou expirado. Faça login no navegador e reexporte os cookies "
+                "(incluindo cf_clearance / __cf_bm se presentes)."
+            )
+        raise AuthError(f"HTTP {resp.status_code} (autenticação) em {url}")
+
     if resp.status_code != 200:
-        raise RuntimeError(f"HTTP {resp.status_code} em {url}: {resp.text[:200]}")
+        raise RuntimeError(f"HTTP {resp.status_code} em {url}: {body[:200]}")
     return resp.json()
 
 
@@ -159,7 +170,7 @@ class HotmartPlatform(Platform):
         return {
             "slug": slug,
             "x-product-id": product_id,
-            "x-app-name": "@hotmart/app-club-consumer_v1.364.2",
+            "x-app-name": "@hotmart/app-club-consumer_v1.365.0",
             "x-hot-club-http": "APP_CLUB_CONSUMER_API_COURSE_CONSUMPTION_GATEWAY_INSTANCE",
             "accept": "application/json",
             "origin": "https://hotmart.com",
