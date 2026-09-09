@@ -23,6 +23,13 @@ def get_json(session, url, headers=None, timeout=20):
                 "ou expirado. Faça login no navegador e reexporte os cookies "
                 "(incluindo cf_clearance / __cf_bm se presentes)."
             )
+        if not body.strip():
+            raise AuthError(
+                f"HTTP {resp.status_code} (resposta vazia — provável bloqueio do Cloudflare/edge) em {url}. "
+                "Os cookies provavelmente não incluem cf_clearance / __cf_bm "
+                "para *.cb.hotmart.com. Faça login no navegador, passe pelo "
+                "desafio do Cloudflare e reexporte."
+            )
         raise AuthError(f"HTTP {resp.status_code} (autenticação) em {url}")
 
     if resp.status_code != 200:
