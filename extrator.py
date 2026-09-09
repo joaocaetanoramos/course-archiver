@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 from lib import downloader, estimate, streams
 from lib.cookies import TolerantSession, load_cookies, validate_cookie_file, write_netscape_cookie_file
 from lib.platforms import AuthError, detect_platform
-from lib.progress import ProgressBar, print_line
+from lib.progress import ProgressBar, listing_progress, print_line
 
 
 USER_AGENT = (
@@ -122,17 +122,27 @@ class App:
             time.sleep(random.uniform(0.02, 0.08))
             return idx, est
 
-        workers = min(6, len(lessons)) if lessons else 1
-        if workers <= 1:
-            for idx, lesson in lessons:
-                i, est = run(idx, lesson)
-                est_by_idx[i] = est
-        else:
-            with ThreadPoolExecutor(max_workers=workers) as pool:
-                futures = [pool.submit(run, idx, lesson) for idx, lesson in lessons]
-                for fut in as_completed(futures):
-                    i, est = fut.result()
+        def do_probe():
+            workers = min(6, len(lessons)) if lessons else 1
+            if workers <= 1:
+                for pos, (idx, lesson) in enumerate(lessons, start=1):
+                    i, est = run(idx, lesson)
                     est_by_idx[i] = est
+                    yield pos
+            else:
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = [pool.submit(run, idx, lesson) for idx, lesson in lessons]
+                    done = 0
+                    for fut in as_completed(futures):
+                        i, est = fut.result()
+                        est_by_idx[i] = est
+                        done += 1
+                        yield done
+
+        title = self._shorten(course.get("title") or course.get("id") or "?", 40)
+        with listing_progress(len(lessons), f"Listando {title}…") as update:
+            for done in do_probe():
+                update(done)
         return est_by_idx
 
     @staticmethod

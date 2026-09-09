@@ -1,5 +1,6 @@
 import atexit
 import threading
+from contextlib import contextmanager
 
 from rich.console import Console
 from rich.progress import (
@@ -50,6 +51,25 @@ def _get_progress():
 
 def print_line(*args, **kwargs):
     console.print(*args, **kwargs)
+
+
+@contextmanager
+def listing_progress(total, desc):
+    progress = Progress(
+        SpinnerColumn(spinner_name="dots"),
+        TextColumn("[bold cyan]{task.description}"),
+        BarColumn(bar_width=24),
+        TextColumn("{task.completed}/{task.total}"),
+        console=console,
+        transient=True,
+        expand=False,
+    )
+    task_id = progress.add_task(desc, total=total)
+    progress.start()
+    try:
+        yield lambda done: progress.update(task_id, completed=done)
+    finally:
+        progress.stop()
 
 
 class ProgressBar:
