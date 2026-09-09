@@ -1,5 +1,5 @@
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -14,21 +14,20 @@ def get_json(session, url, headers=None, timeout=20):
     body = resp.text
 
     if resp.status_code in (401, 403):
-        if "text/html" in content_type and ("fazer login" in body.lower()
-                                            or "login" in body.lower()[:2000]
-                                            or "cloudflare" in body.lower()[:2000]):
-            raise AuthError(
-                f"HTTP {resp.status_code} — gateway exibiu página de login (Cloudflare Access/SSO) em {url}. "
-                "Seu cookie pode estar sem clearance do Cloudflare para *.cb.hotmart.com "
-                "ou expirado. Faça login no navegador e reexporte os cookies "
-                "(incluindo cf_clearance / __cf_bm se presentes)."
-            )
         if not body.strip():
             raise AuthError(
-                f"HTTP {resp.status_code} (resposta vazia — provável bloqueio do Cloudflare/edge) em {url}. "
-                "Os cookies provavelmente não incluem cf_clearance / __cf_bm "
-                "para *.cb.hotmart.com. Faça login no navegador, passe pelo "
-                "desafio do Cloudflare e reexporte."
+                f"HTTP {resp.status_code} (resposta vazia) em {url}. "
+                "A API rejeitou a autenticação.\n"
+                "Para Hotmart: o gateway exige o header 'Authorization: Bearer <hmVlcIntegration>'. "
+                "Exporte o cookie hmVlcIntegration logado em consumer.hotmart.com "
+                "(F12 > Application > Cookies) e use --cookies com ele.\n"
+                "Para outras plataformas: reexporte os cookies do navegador logado."
+            )
+        if "text/html" in content_type and ("login" in body.lower()[:3000]
+                                            or "cloudflare" in body.lower()[:3000]):
+            raise AuthError(
+                f"HTTP {resp.status_code} — resposta HTML de login em {url}. "
+                "A sessão expirou. Faça login no navegador e reexporte os cookies."
             )
         raise AuthError(f"HTTP {resp.status_code} (autenticação) em {url}")
 
@@ -169,19 +168,39 @@ class AstronPlatform(Platform):
 class HotmartPlatform(Platform):
     name = "hotmart"
     GATEWAY = "https://api-club-course-consumption-gateway-ga.cb.hotmart.com"
+    USER_AGENT = (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+    )
 
     def detect(self, url):
         return "hotmart.com" in urlparse(url).netloc
 
-    def _headers(self, slug, product_id):
+    def _bearer(self, session):
+        token = session.cookies.get("hmVlcIntegration")
+        if not token:
+            raise AuthError(
+                "Hotmart: cookie 'hmVlcIntegration' não encontrado nos cookies carregados.\n"
+                "O gateway do Hotmart autentica via 'Authorization: Bearer <hmVlcIntegration>' "
+                "(não via cookies de sessão).\n"
+                "Exporte o cookie hmVlcIntegration logado em consumer.hotmart.com "
+                "(F12 > Application > Cookies > https://consumer.hotmart.com) e use --cookies.\n"
+                "Atenção: com --browser chrome/firefox o Chrome 127+ pode impedir a leitura "
+                "desse cookie (App-Bound Encryption) — nesse caso use --cookies com o arquivo "
+                "exportado manualmente."
+            )
+        return unquote(token)
+
+    def _headers(self, session, slug, product_id):
         return {
             "slug": slug,
             "x-product-id": product_id,
-            "x-app-name": "@hotmart/app-club-consumer_v1.365.0",
-            "x-hot-club-http": "APP_CLUB_CONSUMER_API_COURSE_CONSUMPTION_GATEWAY_INSTANCE",
+            "Authorization": f"Bearer {self._bearer(session)}",
             "accept": "application/json",
+            "accept-language": "pt-BR,pt;q=0.9",
             "origin": "https://hotmart.com",
             "referer": "https://hotmart.com/",
+            "user-agent": self.USER_AGENT,
         }
 
     def _parse_url(self, url):
@@ -199,7 +218,7 @@ class HotmartPlatform(Platform):
         slug, product_id, content_hash = self._parse_url(url)
         if not slug or not product_id:
             raise SystemExit("URL Hotmart inválida. Informe a URL do produto: .../club/{slug}/products/{id}")
-        headers = self._headers(slug, product_id)
+        headers = self._headers(session, slug, product_id)
         data = get_json(session, f"{self.GATEWAY}/v2/product/basic", headers=headers)
         name = data.get("name") or slug
         return [{
@@ -214,7 +233,7 @@ class HotmartPlatform(Platform):
         }]
 
     def list_lessons(self, course, session):
-        headers = self._headers(course["slug"], course["product_id"])
+        headers = self._headers(session, course["slug"], course["product_id"])
         data = get_json(session, f"{self.GATEWAY}/v1/navigation", headers=headers)
         lessons = []
         for module in data.get("modules", []):
@@ -237,7 +256,7 @@ class HotmartPlatform(Platform):
         return lessons
 
     def extract_video(self, lesson, session):
-        headers = self._headers(lesson["_slug"], lesson["_product_id"])
+        headers = self._headers(session, lesson["_slug"], lesson["_product_id"])
         data = get_json(session, f"{self.GATEWAY}/v2/web/lessons/{lesson['_hash']}", headers=headers)
         for media in data.get("medias", []):
             if media.get("type") == "VIDEO" and media.get("url"):

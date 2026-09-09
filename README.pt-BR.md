@@ -156,6 +156,8 @@ A ferramenta também aceita uma string `Cookie:` crua (ex.: copiada do DevTools)
 
 > **Segurança:** o arquivo de cookie contém sua sessão — trate como senha. Não compartilhe. O `.gitignore` deste repo já exclui `cookie*.txt`.
 
+> **Hotmart:** o gateway do Club não autentica via cookie de sessão — exige o header `Authorization: Bearer <hmVlcIntegration>` (copia o valor do cookie **hmVlcIntegration** do domínio `consumer.hotmart.com`). Exporte os cookies logados nesse domínio (F12 → Application → Cookies). O valor é URL-encoded; a ferramenta decodifica automaticamente. Com `--browser chrome/firefox`, o Chrome 127+ criptografa esse cookie (App-Bound Encryption) e ele pode vir vazio — nesse caso use `--cookies` com um arquivo exportado manualmente.
+
 ## Uso
 
 ### Início rápido

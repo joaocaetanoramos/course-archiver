@@ -156,6 +156,8 @@ The tool also accepts a raw `Cookie:` header string (e.g., copied from DevTools)
 
 > **Security:** the cookie file contains your session — treat it like a password. Do not share it. The `.gitignore` in this repo already excludes `cookie*.txt`.
 
+> **Hotmart:** the Club gateway does not authenticate with session cookies — it requires the `Authorization: Bearer <hmVlcIntegration>` header (value of the **hmVlcIntegration** cookie on `consumer.hotmart.com`). Export cookies logged in on that domain (DevTools → Application → Cookies). The value is URL-encoded; the tool decodes it automatically. With `--browser chrome/firefox`, Chrome 127+ encrypts this cookie (App-Bound Encryption) so it may come back empty — in that case use `--cookies` with a manually exported file.
+
 ## Usage
 
 ### Quick start

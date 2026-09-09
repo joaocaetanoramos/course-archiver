@@ -3,7 +3,7 @@ import os
 import subprocess
 
 
-def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fmt="bestvideo+bestaudio/best", concurrent=8):
+def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fmt="bestvideo+bestaudio/best", concurrent=8, http_headers=None):
     import yt_dlp
 
     prefix = str(dest_mp4.with_suffix("")) + ".dl"
@@ -29,6 +29,8 @@ def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fm
         "skip_unavailable_fragments": False,
         "keep_fragments": False,
     }
+    if http_headers:
+        opts["http_headers"] = http_headers
     if ffmpeg:
         opts["ffmpeg_location"] = ffmpeg
     if cookie_file:

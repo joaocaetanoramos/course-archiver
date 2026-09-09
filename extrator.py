@@ -269,6 +269,7 @@ class App:
             downloader.download_ytdlp(
                 stream["url"], dest_mp4, metadata, self.cookie_file, self.ffmpeg,
                 on_progress, stream.get("format", "bestvideo+bestaudio/best"), self.concurrent,
+                stream.get("http_headers"),
             )
 
         def _is_connection_error(exc):

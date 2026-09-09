@@ -44,12 +44,19 @@ def resolve_scaleup(embed_url, session):
 
 
 def resolve_hotmart(embed_url, session):
-    html = session.get(embed_url, timeout=60).text
+    html = session.get(embed_url, headers={"Referer": "https://hotmart.com/"}, timeout=60).text
     m = re.search(r"https://vod-akm\.play\.hotmart\.com/video/[^\"'\s]+\.m3u8[^\"'\s]*", html)
     if not m:
         raise RuntimeError(f"Não encontrei master.m3u8 no embed Hotmart {embed_url}")
     master_url = m.group(0).replace("\\u0026", "&").replace("\\/", "/")
-    return {"kind": "ytdlp", "url": master_url}
+    return {
+        "kind": "ytdlp",
+        "url": master_url,
+        "http_headers": {
+            "Referer": "https://cf-embed.play.hotmart.com/",
+            "Origin": "https://cf-embed.play.hotmart.com",
+        },
+    }
 
 
 def resolve_youtube(embed_url):
