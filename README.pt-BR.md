@@ -61,6 +61,7 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 - 📁 **Saída organizada** — `downloads/<grupo>/<curso>/NN - Aula X.Y.mp4` com metadados título/curso/grupo embutidos.
 - 🪶 **Lossless** — remux direto (`-c copy`) para MP4. Sem re-encoding, sem perda de qualidade.
 - 💻 **CLI limpo** — barras de progresso com rich (sem sobreposição), linhas de status coloridas, headers por capítulo.
+- 📊 **Estimativa de tamanho e duração** — todo `--ls` mostra tamanho/duração por aula além dos totais por capítulo, por curso e de todos os cursos juntos; a barra de download mostra tamanho total, velocidade, tempo decorrido e ETA. Totalmente genérico (sonda o stream resolvido: HLS via bandwidth × duração `EXTINF`, ou `Content-Range` para URLs diretas), funcionando para plataformas atuais e futuras sem mudanças. Best-effort — valores desconhecidos aparecem como `n/d` (ex.: YouTube).
 
 ## Plataformas suportadas
 
@@ -193,7 +194,7 @@ course-archiver --cookies cookie.txt "<URL>" --ls
 | `--parallel` `N` | Número de aulas baixadas em paralelo | `1` |
 | `--concurrent` `N` | Fragmentos HLS baixados em paralelo **por vídeo** | `8` |
 | `--retries` `N` | Tentativas por aula em erros de rede transitórios | `3` |
-| `--ls` `NIVEL` | Lista sem baixar: `courses` \| `chapters` \| `lessons`. Sem valor lista tudo (equivale a `lessons`) | — |
+| `--ls` `NIVEL` | Lista sem baixar: `courses` \| `chapters` \| `lessons`. Sem valor lista tudo (equivale a `lessons`). Mostra tamanho + duração por aula e totais por capítulo/curso/todos os cursos | — |
 | `--course` `IDS` | Filtra por slug ou id de curso (separado por vírgula) | — |
 | `--lesson` `IDS` | Filtra por id de aula (separado por vírgula) | — |
 | `--ffmpeg` `CAMINHO` | Caminho do executável ffmpeg | auto-detecta |
@@ -256,6 +257,7 @@ lib/
   platforms.py       # Adaptadores de plataforma plugáveis (detect / discover / list_lessons / extract_video)
   streams.py         # Resolve URL de embed do host de vídeo → master m3u8 (Bunny / PandaVideo / Scaleup / Hotmart / YouTube)
   downloader.py      # O download em si: yt-dlp nativo HLS, `concurrent_fragment_downloads`, remux `-c copy`, metadados
+  estimate.py        # Estimativas de tamanho/duração: sonda o stream resolvido (HLS bandwidth × EXTINF, ou direto via Content-Range)
   progress.py        # Barras de progresso com Rich (uma por vídeo, empilhadas, sem sobreposição)
 ```
 

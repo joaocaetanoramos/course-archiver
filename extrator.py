@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlparse
 
-from lib import downloader, streams
+from lib import downloader, estimate, streams
 from lib.cookies import TolerantSession, load_cookies, validate_cookie_file, write_netscape_cookie_file
 from lib.platforms import AuthError, detect_platform
 from lib.progress import ProgressBar, print_line
@@ -103,29 +103,125 @@ class App:
             if not self.only_lessons or lesson["id"] in self.only_lessons
         ]
 
+    def _lesson_estimate(self, platform, course, lesson, idx):
+        try:
+            session = self.session()
+            embed = platform.extract_video(lesson, session)
+            if not embed:
+                return (None, None)
+            stream = streams.resolve_stream(embed, session)
+            return estimate.probe_stream(stream, session)
+        except Exception:
+            return (None, None)
+
+    def _probe_lessons(self, platform, course, lessons):
+        est_by_idx = {}
+
+        def run(idx, lesson):
+            est = self._lesson_estimate(platform, course, lesson, idx)
+            time.sleep(random.uniform(0.02, 0.08))
+            return idx, est
+
+        workers = min(6, len(lessons)) if lessons else 1
+        if workers <= 1:
+            for idx, lesson in lessons:
+                i, est = run(idx, lesson)
+                est_by_idx[i] = est
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [pool.submit(run, idx, lesson) for idx, lesson in lessons]
+                for fut in as_completed(futures):
+                    i, est = fut.result()
+                    est_by_idx[i] = est
+        return est_by_idx
+
+    @staticmethod
+    def _est_str(size, duration):
+        parts = []
+        d = estimate.format_duration(duration)
+        s = estimate.format_bytes(size)
+        if d:
+            parts.append(d)
+        if s != "n/d":
+            parts.append(s)
+        return " · ".join(parts) if parts else "n/d"
+
+    @staticmethod
+    def _sum_est(items):
+        size = 0
+        dur = 0.0
+        for _, _, (s, d) in items:
+            if s:
+                size += s
+            if d:
+                dur += d
+        return size, dur
+
+    @staticmethod
+    def _totals_str(n, size, duration):
+        parts = [f"{n} aula(s)"]
+        s = estimate.format_bytes(size)
+        if s != "n/d":
+            parts.append(s)
+        d = estimate.format_duration(duration)
+        if d:
+            parts.append(d)
+        return " · ".join(parts)
+
     def _list(self, platform, courses):
+        courses_data = []
         for course in self._select_courses(courses):
+            lessons = self._load_lessons(platform, course)
+            if not lessons:
+                continue
+            est_by_idx = self._probe_lessons(platform, course, lessons)
+            courses_data.append((course, lessons, est_by_idx))
+
+        grand_size = 0
+        grand_dur = 0.0
+        grand_lessons = 0
+
+        for course, lessons, est_by_idx in courses_data:
             cid = course.get("course_id", course.get("id", ""))
             slug = course.get("slug") or course.get("url") or ""
             print_line()
             print_line(f"[bold]{course.get('title') or cid}[/bold]  [dim]id={cid} | {slug}[/dim]")
 
-            if self.ls not in ("chapters", "lessons"):
-                continue
-
-            lessons = self._load_lessons(platform, course)
-            if not lessons:
-                continue
-
             chapters = {}
             for idx, lesson in lessons:
-                chapters.setdefault(lesson.get("chapter") or course.get("title") or cid, []).append((idx, lesson))
+                key = lesson.get("chapter") or course.get("title") or cid
+                chapters.setdefault(key, []).append((idx, lesson))
 
-            for chapter, items in chapters.items():
-                print_line(f"  [bold underline]{chapter}[/bold underline]  [dim]({len(items)} aula(s))[/dim]")
-                if self.ls == "lessons":
-                    for idx, lesson in items:
-                        print_line(f"    [dim]{lesson['id']:<12}[/dim] {lesson['title']}")
+            if self.ls in ("chapters", "lessons"):
+                for chapter, items in chapters.items():
+                    c_items = [(idx, lesson, est_by_idx.get(idx, (None, None))) for idx, lesson in items]
+                    ch_size, ch_dur = self._sum_est(c_items)
+                    print_line(
+                        f"  [bold underline]{chapter}[/bold underline]  "
+                        f"[dim]({self._totals_str(len(items), ch_size, ch_dur)})[/dim]"
+                    )
+                    if self.ls == "lessons":
+                        for idx, lesson in items:
+                            size, duration = est_by_idx.get(idx, (None, None))
+                            print_line(
+                                f"    [dim]{lesson['id']:<12}[/dim] {lesson['title']}  "
+                                f"[dim]({self._est_str(size, duration)})[/dim]"
+                            )
+
+            c_items = [(idx, lesson, est_by_idx.get(idx, (None, None))) for idx, lesson in lessons]
+            c_size, c_dur = self._sum_est(c_items)
+            print_line(f"  [dim]{self._totals_str(len(lessons), c_size, c_dur)}[/dim]")
+
+            grand_size += c_size
+            grand_dur += c_dur
+            grand_lessons += len(lessons)
+
+        print_line()
+        print_line(
+            f"[bold underline]Total:[/bold underline] "
+            f"{self._totals_str(grand_lessons, grand_size, grand_dur)} "
+            f"em {len(courses_data)} curso(s)."
+        )
 
     def run(self):
         try:
@@ -182,7 +278,8 @@ class App:
             status = res.get("status")
             title = res["lesson"]["title"]
             if status in ("baixado", "ja-baixado"):
-                print_line(f"[green]{k}/{total}[/green] [bold]{title}[/bold]")
+                suffix = f"  [dim]({estimate.format_bytes(res.get('size'))})[/dim]" if res.get("size") else ""
+                print_line(f"[green]{k}/{total}[/green] [bold]{title}[/bold]{suffix}")
             elif status == "sem-video":
                 print_line(f"[dim]{k}/{total} — {title} (sem vídeo)[/dim]")
             else:
@@ -209,7 +306,11 @@ class App:
         ok = sum(1 for r in results if r.get("status") in ("baixado", "ja-baixado"))
         errs = sum(1 for r in results if r.get("status") == "erro")
         skipped = sum(1 for r in results if r.get("status") == "sem-video")
-        print_line(f"  → {ok} baixado(s), {skipped} sem vídeo, {errs} erro(s).")
+        totale = sum(r.get("size") or 0 for r in results)
+        summary = f"  → {ok} baixado(s), {skipped} sem vídeo, {errs} erro(s)."
+        if totale:
+            summary = summary[:-1] + f" · {estimate.format_bytes(totale)}."
+        print_line(summary)
 
     def _throttle_down(self):
         with self._concurrent_lock:
@@ -236,19 +337,27 @@ class App:
         dest_mp4 = lesson_dir / (base_name + ".mp4")
 
         if dest_mp4.exists():
-            return {"lesson": lesson, "status": "ja-baixado"}
+            try:
+                size = dest_mp4.stat().st_size
+            except OSError:
+                size = None
+            return {"lesson": lesson, "status": "ja-baixado", "size": size}
 
         embed = platform.extract_video(lesson, session)
         if not embed:
             return {"lesson": lesson, "status": "sem-video"}
         stream = streams.resolve_stream(embed, session)
+        probe_size, _ = estimate.probe_stream(stream, session)
 
         desc = self._shorten(lesson["title"])
-        bar = ProgressBar(total=None, desc=desc)
+        bar = ProgressBar(total=probe_size, desc=desc)
+        stats = {"value": 0, "total": probe_size, "t0": time.monotonic()}
 
         def on_progress(value, total):
-            if total:
+            if total and stats["total"] != total:
+                stats["total"] = total
                 bar.set_total(total)
+            stats["value"] = max(stats["value"], value)
             bar.update_to(value)
 
         metadata = {
@@ -281,7 +390,16 @@ class App:
             for attempt in range(self.retries):
                 try:
                     _do_download()
-                    return {"lesson": lesson, "status": "baixado"}
+                    try:
+                        size = dest_mp4.stat().st_size
+                    except OSError:
+                        size = stats["value"] or stats["total"]
+                    return {
+                        "lesson": lesson,
+                        "status": "baixado",
+                        "size": size,
+                        "elapsed": time.monotonic() - stats["t0"],
+                    }
                 except Exception as exc:
                     err = str(exc)
                     last_exc = exc

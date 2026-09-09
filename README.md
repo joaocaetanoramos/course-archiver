@@ -61,6 +61,7 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 - 📁 **Organized output** — `downloads/<group>/<course>/NN - Lesson X.Y.mp4` with embedded title/album/artist/comment metadata.
 - 🪶 **Lossless** — direct remux (`-c copy`) to MP4. No re-encoding, no quality loss.
 - 💻 **Clean CLI** — rich-powered progress bars (no overlap), colored status lines, per-chapter headers.
+- 📊 **Size & duration estimates** — every `--ls` listing shows per-lesson size/duration plus per-chapter, per-course and grand totals; the download bar shows total size, speed, elapsed and ETA. Fully generic (probes the resolved stream: HLS bandwidth × `EXTINF` durations, or `Content-Range` for direct URLs), so it works for current and future platforms without changes. Best-effort — unknown values print `n/d` (e.g. YouTube).
 
 ## Supported platforms
 
@@ -193,7 +194,7 @@ course-archiver --cookies cookie.txt "<URL>" --ls
 | `--parallel` `N` | Number of lessons downloaded concurrently | `1` |
 | `--concurrent` `N` | HLS fragments downloaded in parallel **per video** | `8` |
 | `--retries` `N` | Retries per lesson on transient network errors | `3` |
-| `--ls` `LEVEL` | List without downloading: `courses` \| `chapters` \| `lessons`. No value lists everything (same as `lessons`) | — |
+| `--ls` `LEVEL` | List without downloading: `courses` \| `chapters` \| `lessons`. No value lists everything (same as `lessons`). Shows size + duration per lesson and totals per chapter/course/all courses | — |
 | `--course` `IDS` | Filter by course slug or id (comma-separated) | — |
 | `--lesson` `IDS` | Filter by lesson id (comma-separated) | — |
 | `--ffmpeg` `PATH` | Path to ffmpeg executable | auto-detect |
@@ -256,6 +257,7 @@ lib/
   platforms.py       # Pluggable platform adapters (detect / discover / list_lessons / extract_video)
   streams.py         # Resolves a video-host embed URL → master m3u8 URL (Bunny / PandaVideo / Scaleup / Hotmart / YouTube)
   downloader.py      # The actual download: yt-dlp native HLS, `concurrent_fragment_downloads`, `-c copy` remux, metadata tags
+  estimate.py        # Size/duration estimates: HLS (bandwidth × EXTINF) or direct (Content-Range) probe of the resolved stream
   progress.py        # Rich-based progress bars (one per video, stacked, no overlap)
 ```
 

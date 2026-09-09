@@ -4,10 +4,12 @@ import threading
 from rich.console import Console
 from rich.progress import (
     BarColumn,
+    FileSizeColumn,
     Progress,
     SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
+    TimeElapsedColumn,
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
@@ -29,7 +31,11 @@ def _get_progress():
                     BarColumn(bar_width=32),
                     TaskProgressColumn(),
                     TextColumn("·"),
+                    FileSizeColumn(),
+                    TextColumn("·"),
                     TransferSpeedColumn(),
+                    TextColumn("·"),
+                    TimeElapsedColumn(),
                     TextColumn("·"),
                     TimeRemainingColumn(),
                     console=console,

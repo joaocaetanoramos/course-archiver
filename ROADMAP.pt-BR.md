@@ -18,6 +18,7 @@ Este documento acompanha a evolução planejada do `course-archiver`, a justific
 - ✅ Instalável como CLI global via `pip install .` → `course-archiver`.
 - ✅ Hotmart Club funcionando de ponta a ponta: autenticação do gateway com `Authorization: Bearer <hmVlcIntegration>` (decodificado do cookie do domínio `consumer.hotmart.com`), HLS assinado da Akamai (AES-128) resolvido a partir da página cf-embed.
 - ✅ Memberkit funcionando de ponta a ponta: descoberta de curso/aula a partir da página inicial, HLS do Vimeo (vídeo privado) resolvido via config do player (`playlist.m3u8` assinado no `vod-adaptive.vimeocdn.com`).
+- ✅ Estimativas de tamanho e duração: sondagem genérica do stream resolvido (HLS `bandwidth × EXTINF`; direta via `Content-Range`) — visíveis em todos os níveis de `--ls` (com totais por capítulo/curso/geral) e na barra de download (tamanho, velocidade, ETA).
 - ✅ Documentação em inglês e português.
 
 ---

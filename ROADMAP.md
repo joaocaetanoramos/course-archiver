@@ -18,6 +18,7 @@ This document tracks the planned evolution of `course-archiver`, the rationale b
 - ✅ Installable as a global CLI via `pip install .` → `course-archiver`.
 - ✅ Hotmart Club working end-to-end: gateway authenticated with `Authorization: Bearer <hmVlcIntegration>` (URL-decoded from the `consumer.hotmart.com` cookie), signed Akamai HLS (AES-128) resolved from the cf-embed page.
 - ✅ Memberkit working end-to-end: course/lesson discovery from the landing page, private Vimeo HLS resolved via the player config (signed `vod-adaptive.vimeocdn.com` playlist).
+- ✅ Size & duration estimates: generic probe of the resolved stream (HLS `bandwidth × EXTINF`; direct via `Content-Range`) — shown across all `--ls` levels (with per-chapter/course/grand totals) and in the download bar (size, speed, ETA).
 - ✅ English + Portuguese documentation.
 
 ---
