@@ -54,7 +54,7 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 ## Features
 
 - 🎓 **Automatic course discovery** — point it at a dashboard/course URL and it walks the sidebar.
-- 🌐 **Multi-platform** — pluggable adapters for Astron Members, Hotmart Club, Kiwify, Curseduca, plus a generic fallback.
+- 🌐 **Multi-platform** — pluggable adapters for Astron Members, Memberkit, Hotmart Club, Kiwify, Curseduca, plus a generic fallback.
 - 🎥 **Multi-host video support** — Bunny Stream, PandaVideo, Scaleup (Smart Player), Hotmart AES-128 HLS, YouTube, direct m3u8 / mp4 — all routed through the same download path.
 - ⚡ **Parallel downloads** — concurrent segment fetches per video (`--concurrent`) and concurrent lessons (`--parallel`).
 - 🔁 **Resilient** — automatic retry with exponential backoff for transient network errors; auto-throttles `concurrent` when the server resets connections; auto-regenerates the cookie file on the rare "Netscape format" error.
@@ -69,6 +69,7 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 | **Astron Members** (`*.astronmembers.com`) | ✅ | ✅ Bunny / PandaVideo / Scaleup / YouTube | Full course + module + lesson discovery from the dashboard sidebar. |
 | **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + separate audio track merged automatically. Authenticates via `Authorization: Bearer <hmVlcIntegration>` cookie from `consumer.hotmart.com`. |
 | **Kiwify** (`*.kiwify.com`) | ✅ | ✅ HLS stream / direct download | May require a refresh token from localStorage. |
+| **Memberkit** (`*.memberkit.com.br`) | ✅ | ✅ HLS (Vimeo player) | Videos hosted on Vimeo with signed URLs; HLS resolved via the player config. Cookie of the domain only. |
 | **Curseduca** (`*.curseduca.pro`) | ⚠️ detection only | — | Lesson listing pending. |
 | **Generic video URL** | — | ✅ via `yt-dlp` | Any m3u8 / mp4 / YouTube / Vimeo / Wistia link. |
 
@@ -254,7 +255,7 @@ lib/
 ```
 +--------------------+
 | 1. Parse URL & detect platform (lib/platforms.py)
-|    (Astron / Hotmart / Kiwify / Curseduca / generic)
+|    (Astron / Memberkit / Hotmart / Kiwify / Curseduca / generic)
 +----------+---------+
            |
            v
@@ -283,6 +284,7 @@ lib/
 |    Panda:  build b-{pullzone}.tv.pandavideo.com.br/{id}/playlist.m3u8
 |    Scale:  fetch embed → meta hls-prefetch-url
 |    Hotm:   fetch cf-embed → regex vod-akm.play.hotmart.com/.../master-pkg-*.m3u8
+|    Member: player.vimeo.com → config → vod-adaptive.vimeocdn.com/playlist.m3u8
 |    YT:     normalize /embed/{id} → /watch?v={id}
 +----------+---------+
            |

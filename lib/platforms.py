@@ -378,7 +378,111 @@ class CurseducaPlatform(Platform):
         raise NotImplementedError
 
 
-PLATFORMS = [AstronPlatform(), HotmartPlatform(), KiwifyPlatform(), CurseducaPlatform()]
+class MemberkitPlatform(Platform):
+    name = "memberkit"
+    USER_AGENT = (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+    )
+    COURSE_RE = re.compile(r"^(?P<id>\d+)-[^/]*$")
+
+    def detect(self, url):
+        return "memberkit.com.br" in urlparse(url).netloc
+
+    def _base(self, url):
+        p = urlparse(url)
+        return f"{p.scheme}://{p.netloc}"
+
+    def _get(self, session, url):
+        resp = session.get(url, headers={"user-agent": self.USER_AGENT}, timeout=30)
+        if resp.status_code in (401, 403):
+            raise AuthError(
+                f"HTTP {resp.status_code} em {url}. Sessão do Memberkit expirada — "
+                "faça login no navegador e reexporte os cookies."
+            )
+        if resp.status_code != 200:
+            raise RuntimeError(f"HTTP {resp.status_code} em {url}")
+        return resp.text
+
+    def discover(self, url, session):
+        base = self._base(url)
+        path = urlparse(url).path.strip("/")
+        target = base + "/"
+        html = self._get(session, target)
+        soup = BeautifulSoup(html, "html.parser")
+
+        courses = []
+        for card in soup.select("div.card[data-id]"):
+            a = card.select_one('a[href]')
+            href = str(a["href"]) if a else ""
+            m = self.COURSE_RE.match(href.strip("/"))
+            if not m:
+                continue
+            cid = card.get("data-id") or m.group("id")
+            title = a.get_text(strip=True) or cid
+            courses.append({
+                "platform": self.name,
+                "course_id": cid,
+                "id": cid,
+                "title": title,
+                "group": "",
+                "slug": href.strip("/"),
+                "url": base + href,
+            })
+
+        if path:
+            chosen_id = path.split("-", 1)[0]
+            for c in courses:
+                if c["course_id"] == chosen_id:
+                    return [c]
+            return [{
+                "platform": self.name,
+                "course_id": chosen_id,
+                "id": chosen_id,
+                "title": path.split("-", 1)[1] or chosen_id,
+                "group": "",
+                "slug": path,
+                "url": base + "/" + path,
+            }]
+        return courses
+
+    def list_lessons(self, course, session):
+        base = self._base(course["url"])
+        html = self._get(session, course["url"])
+        soup = BeautifulSoup(html, "html.parser")
+
+        lessons = []
+        for section in soup.select("div.section[id]"):
+            if not section.select("ul.section__items"):
+                continue
+            h4 = section.select_one("h4")
+            module_title = h4.get_text(strip=True) if h4 else ""
+            for li in section.select("ul.section__items li[data-id]"):
+                a = li.select_one("a.lesson__title")
+                if not a or not a.get("href"):
+                    continue
+                lesson_id = li.get("data-id")
+                title = a.get_text(strip=True) or lesson_id
+                lessons.append({
+                    "id": lesson_id,
+                    "title": title,
+                    "url": base + str(a["href"]),
+                    "group": course["group"],
+                    "chapter": module_title or course["title"],
+                })
+        return lessons
+
+    def extract_video(self, lesson, session):
+        html = self._get(session, lesson["url"])
+        m = re.search(r'data-vimeo-uid-value="(\d+)"', html)
+        if not m:
+            return None
+        uid = m.group(1)
+        ref = f"https://player.vimeo.com/video/{uid}"
+        return f"{ref}?memberkit_ref={lesson['url']}"
+
+
+PLATFORMS = [AstronPlatform(), HotmartPlatform(), KiwifyPlatform(), CurseducaPlatform(), MemberkitPlatform()]
 
 
 def detect_platform(url):

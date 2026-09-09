@@ -54,7 +54,7 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 ## Funcionalidades
 
 - 🎓 **Descoberta automática de cursos** — aponte para um dashboard/curso e ela percorre a sidebar.
-- 🌐 **Multi-plataforma** — adaptadores plugáveis para Astron Members, Hotmart Club, Kiwify, Curseduca, mais um fallback genérico.
+- 🌐 **Multi-plataforma** — adaptadores plugáveis para Astron Members, Memberkit, Hotmart Club, Kiwify, Curseduca, mais um fallback genérico.
 - 🎥 **Suporte multi-host de vídeo** — Bunny Stream, PandaVideo, Scaleup (Smart Player), Hotmart AES-128 HLS, YouTube, m3u8 / mp4 diretos — todos pela mesma rota de download.
 - ⚡ **Downloads paralelos** — segmentos em paralelo por vídeo (`--concurrent`) e aulas em paralelo (`--parallel`).
 - 🔁 **Resiliente** — retry automático com backoff exponencial para erros de rede transitórios; auto-reduz `concurrent` quando o servidor reseta conexões; auto-regenera o arquivo de cookie no raro erro "Netscape format".
@@ -69,6 +69,7 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 | **Astron Members** (`*.astronmembers.com`) | ✅ | ✅ Bunny / PandaVideo / Scaleup / YouTube | Descoberta completa de curso/módulo/aula a partir da sidebar do dashboard. |
 | **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + áudio separado mesclado automaticamente. Autentica via `Authorization: Bearer <hmVlcIntegration>` (cookie do domínio `consumer.hotmart.com`). |
 | **Kiwify** (`*.kiwify.com`) | ✅ | ✅ HLS stream / download direto | Pode exigir refresh token do localStorage. |
+| **Memberkit** (`*.memberkit.com.br`) | ✅ | ✅ HLS (Vimeo player) | Vídeos hospedados no Vimeo com URL assinada; HLS resolvido via config do player. Apenas cookies do domínio. |
 | **Curseduca** (`*.curseduca.pro`) | ⚠️ apenas detecção | — | Listagem de aulas pendente. |
 | **URL genérica de vídeo** | — | ✅ via `yt-dlp` | Qualquer link m3u8 / mp4 / YouTube / Vimeo / Wistia. |
 
@@ -254,7 +255,7 @@ lib/
 ```
 +--------------------+
 | 1. Parse URL & detecta plataforma (lib/platforms.py)
-|    (Astron / Hotmart / Kiwify / Curseduca / genérica)
+|    (Astron / Memberkit / Hotmart / Kiwify / Curseduca / genérica)
 +----------+---------+
            |
            v
@@ -283,6 +284,7 @@ lib/
 |    Panda:  monta b-{pullzone}.tv.pandavideo.com.br/{id}/playlist.m3u8
 |    Scale:  fetch embed → meta hls-prefetch-url
 |    Hotm:   fetch cf-embed → regex vod-akm.play.hotmart.com/.../master-pkg-*.m3u8
+|    Member: player.vimeo.com → config → vod-adaptive.vimeocdn.com/playlist.m3u8
 |    YT:     normaliza /embed/{id} → /watch?v={id}
 +----------+---------+
            |

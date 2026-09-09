@@ -8,7 +8,7 @@ Este documento acompanha a evolução planejada do `course-archiver`, a justific
 
 ## Estado atual — v2.0.0
 
-- ✅ Multi-plataforma: Astron Members, Hotmart Club, Kiwify, Curseduca (apenas detecção).
+- ✅ Multi-plataforma: Astron Members, Memberkit, Hotmart Club, Kiwify, Curseduca (apenas detecção).
 - ✅ Multi-host de vídeo: Bunny Stream (AES-128), PandaVideo, Scaleup (Smart Player), Hotmart HLS, YouTube, genérico.
 - ✅ Descoberta automática de curso/módulo/aula a partir do cookie de sessão.
 - ✅ Remux lossless (`-c copy`) para MP4 com metadados embutidos.
@@ -17,6 +17,7 @@ Este documento acompanha a evolução planejada do `course-archiver`, a justific
 - ✅ UI limpa com rich (barras sem sobreposição).
 - ✅ Instalável como CLI global via `pip install .` → `course-archiver`.
 - ✅ Hotmart Club funcionando de ponta a ponta: autenticação do gateway com `Authorization: Bearer <hmVlcIntegration>` (decodificado do cookie do domínio `consumer.hotmart.com`), HLS assinado da Akamai (AES-128) resolvido a partir da página cf-embed.
+- ✅ Memberkit funcionando de ponta a ponta: descoberta de curso/aula a partir da página inicial, HLS do Vimeo (vídeo privado) resolvido via config do player (`playlist.m3u8` assinado no `vod-adaptive.vimeocdn.com`).
 - ✅ Documentação em inglês e português.
 
 ---

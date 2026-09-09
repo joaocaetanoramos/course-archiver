@@ -8,7 +8,7 @@ This document tracks the planned evolution of `course-archiver`, the rationale b
 
 ## Current state — v2.0.0
 
-- ✅ Multi-platform: Astron Members, Hotmart Club, Kiwify, Curseduca (detection only).
+- ✅ Multi-platform: Astron Members, Memberkit, Hotmart Club, Kiwify, Curseduca (detection only).
 - ✅ Multi-host video: Bunny Stream (AES-128), PandaVideo, Scaleup (Smart Player), Hotmart HLS, YouTube, generic.
 - ✅ Automatic course / module / lesson discovery from the cookie session.
 - ✅ Lossless remux (`-c copy`) to MP4 with embedded metadata.
@@ -17,6 +17,7 @@ This document tracks the planned evolution of `course-archiver`, the rationale b
 - ✅ Clean rich-powered terminal UI (no overlapping bars).
 - ✅ Installable as a global CLI via `pip install .` → `course-archiver`.
 - ✅ Hotmart Club working end-to-end: gateway authenticated with `Authorization: Bearer <hmVlcIntegration>` (URL-decoded from the `consumer.hotmart.com` cookie), signed Akamai HLS (AES-128) resolved from the cf-embed page.
+- ✅ Memberkit working end-to-end: course/lesson discovery from the landing page, private Vimeo HLS resolved via the player config (signed `vod-adaptive.vimeocdn.com` playlist).
 - ✅ English + Portuguese documentation.
 
 ---
