@@ -7,7 +7,6 @@ import random
 import re
 import requests
 import shutil
-import sys
 import threading
 import time
 import unicodedata
@@ -53,7 +52,7 @@ def sanitize_filename(name):
 
 
 class App:
-    LS_LEVELS = ("courses", "chapters", "lessons", "all")
+    LS_LEVELS = ("courses", "chapters", "lessons")
 
     def __init__(self, url, cookies, output, parallel, ls, ffmpeg, only_courses, only_lessons, concurrent, retries):
         self.url = url
@@ -111,7 +110,7 @@ class App:
             print_line()
             print_line(f"[bold]{course.get('title') or cid}[/bold]  [dim]id={cid} | {slug}[/dim]")
 
-            if self.ls not in ("chapters", "lessons", "all"):
+            if self.ls not in ("chapters", "lessons"):
                 continue
 
             lessons = self._load_lessons(platform, course)
@@ -124,7 +123,7 @@ class App:
 
             for chapter, items in chapters.items():
                 print_line(f"  [bold underline]{chapter}[/bold underline]  [dim]({len(items)} aula(s))[/dim]")
-                if self.ls in ("lessons", "all"):
+                if self.ls == "lessons":
                     for idx, lesson in items:
                         print_line(f"    [dim]{lesson['id']:<12}[/dim] {lesson['title']}")
 
@@ -336,29 +335,19 @@ def main():
     parser.add_argument("--parallel", type=int, default=1, help="Número de downloads em paralelo")
     parser.add_argument("--concurrent", type=int, default=8, help="Segmentos baixados em paralelo por vídeo")
     parser.add_argument("--retries", type=int, default=3, help="Tentativas por aula em caso de erro de rede transitório")
-    parser.add_argument("--ls", nargs="?", const="all", choices=App.LS_LEVELS,
-                        help="Lista sem baixar: courses, chapters, lessons ou all (padrão: all). "
-                             "Ex.: --ls courses / --ls all")
-    parser.add_argument("-a", "--all", action="store_true", dest="ls_all",
-                        help="Atalho para --ls all")
+    parser.add_argument("--ls", nargs="?", const="lessons", choices=App.LS_LEVELS,
+                        help="Lista sem baixar. Níveis: courses, chapters, lessons. "
+                             "Sem valor lista tudo (courses + chapters + lessons). "
+                             "Ex.: --ls courses / --ls")
     parser.add_argument("--ffmpeg", help="Caminho do executável ffmpeg (opcional)")
     parser.add_argument("--course", help="Filtra por slug ou id de curso (separado por vírgula)")
     parser.add_argument("--lesson", help="Filtra por id de aula (separado por vírgula)")
 
-    argv = sys.argv[1:]
-    argv = list(argv)
-    for i in range(len(argv) - 1):
-        if argv[i] == "--ls" and argv[i + 1] == "-a":
-            argv[i + 1] = "all"
-    args = parser.parse_args(argv)
+    args = parser.parse_args()
     if not args.cookies:
         parser.error("informe --cookies arquivo.txt")
 
     ls = args.ls
-    if args.ls_all:
-        if ls not in (None, "all"):
-            parser.error("use --ls all ou -a, não ambos com valores diferentes")
-        ls = "all"
 
     app = App(
         url=args.url,

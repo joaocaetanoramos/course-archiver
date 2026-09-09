@@ -178,6 +178,9 @@ course-archiver --cookies cookie.txt "<URL>" --ls chapters --course <id>
 
 # List a course's lessons (id + title)
 course-archiver --cookies cookie.txt "<URL>" --ls lessons --course <id>
+
+# List everything (courses + chapters + lessons) in one command
+course-archiver --cookies cookie.txt "<URL>" --ls
 ```
 
 ### All arguments
@@ -190,8 +193,7 @@ course-archiver --cookies cookie.txt "<URL>" --ls lessons --course <id>
 | `--parallel` `N` | Number of lessons downloaded concurrently | `1` |
 | `--concurrent` `N` | HLS fragments downloaded in parallel **per video** | `8` |
 | `--retries` `N` | Retries per lesson on transient network errors | `3` |
-| `--ls` `LEVEL` | List without downloading: `courses` \| `chapters` \| `lessons` \| `all`. Omitting the level or using `-a` means `all` | — |
-| `-a`, `--all` | Shorthand for `--ls all` | `false` |
+| `--ls` `LEVEL` | List without downloading: `courses` \| `chapters` \| `lessons`. No value lists everything (same as `lessons`) | — |
 | `--course` `IDS` | Filter by course slug or id (comma-separated) | — |
 | `--lesson` `IDS` | Filter by lesson id (comma-separated) | — |
 | `--ffmpeg` `PATH` | Path to ffmpeg executable | auto-detect |
