@@ -413,7 +413,8 @@ class MemberkitPlatform(Platform):
 
         courses = []
         for card in soup.select("div.card[data-id]"):
-            a = card.select_one('a[href]')
+            links = card.select('a[href^="/"]')
+            a = next((x for x in links if x.get_text(strip=True)), links[0] if links else None)
             href = str(a["href"]) if a else ""
             m = self.COURSE_RE.match(href.strip("/"))
             if not m:

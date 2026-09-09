@@ -167,11 +167,17 @@ The tool also accepts a raw `Cookie:` header string (e.g., copied from DevTools)
 # Download a full course dashboard
 course-archiver --cookies cookie.txt "<DASHBOARD_URL>"
 
-# Download a specific course
+# Download one specific course
 course-archiver --cookies cookie.txt "<COURSE_URL>"
 
-# Just list courses/lessons without downloading
-course-archiver --cookies cookie.txt "<COURSE_URL>" --dry-run
+# List all available courses (id + slug of each)
+course-archiver --cookies cookie.txt "<URL>" --ls courses
+
+# List a course's modules/chapters
+course-archiver --cookies cookie.txt "<URL>" --ls chapters --course <id>
+
+# List a course's lessons (id + title)
+course-archiver --cookies cookie.txt "<URL>" --ls lessons --course <id>
 ```
 
 ### All arguments
@@ -184,7 +190,8 @@ course-archiver --cookies cookie.txt "<COURSE_URL>" --dry-run
 | `--parallel` `N` | Number of lessons downloaded concurrently | `1` |
 | `--concurrent` `N` | HLS fragments downloaded in parallel **per video** | `8` |
 | `--retries` `N` | Retries per lesson on transient network errors | `3` |
-| `--dry-run` | List courses/lessons without downloading | `false` |
+| `--ls` `LEVEL` | List without downloading: `courses` \| `chapters` \| `lessons` \| `all`. Omitting the level or using `-a` means `all` | — |
+| `-a`, `--all` | Shorthand for `--ls all` | `false` |
 | `--course` `IDS` | Filter by course slug or id (comma-separated) | — |
 | `--lesson` `IDS` | Filter by lesson id (comma-separated) | — |
 | `--ffmpeg` `PATH` | Path to ffmpeg executable | auto-detect |
@@ -234,7 +241,7 @@ Each `.mp4` has embedded metadata:
 | `artist` | Group name |
 | `comment` | Original lesson URL |
 
-Lessons marked **"sem vídeo"** (`--dry-run` / live) are section/track dividers in the platform's sidebar (no actual video) and are skipped automatically.
+Lessons marked **"sem vídeo"** (`--ls` / live) are section/track dividers in the platform's sidebar (no actual video) and are skipped automatically.
 
 ## Architecture
 

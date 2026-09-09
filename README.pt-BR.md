@@ -170,8 +170,14 @@ course-archiver --cookies cookie.txt "<URL_DO_DASHBOARD>"
 # Baixar um curso específico
 course-archiver --cookies cookie.txt "<URL_DO_CURSO>"
 
-# Apenas listar cursos/aulas sem baixar
-course-archiver --cookies cookie.txt "<URL_DO_CURSO>" --dry-run
+# Listar todos os cursos disponíveis (id + slug de cada um)
+course-archiver --cookies cookie.txt "<URL>" --ls courses
+
+# Listar módulos/capítulos de um curso
+course-archiver --cookies cookie.txt "<URL>" --ls chapters --course <id>
+
+# Listar as aulas (id + título) de um curso
+course-archiver --cookies cookie.txt "<URL>" --ls lessons --course <id>
 ```
 
 ### Todos os argumentos
@@ -184,7 +190,8 @@ course-archiver --cookies cookie.txt "<URL_DO_CURSO>" --dry-run
 | `--parallel` `N` | Número de aulas baixadas em paralelo | `1` |
 | `--concurrent` `N` | Fragmentos HLS baixados em paralelo **por vídeo** | `8` |
 | `--retries` `N` | Tentativas por aula em erros de rede transitórios | `3` |
-| `--dry-run` | Apenas lista cursos/aulas sem baixar | `false` |
+| `--ls` `NIVEL` | Lista sem baixar: `courses` \| `chapters` \| `lessons` \| `all`. Omitir o nível ou usar `-a` equivale a `all` | — |
+| `-a`, `--all` | Atalho para `--ls all` | `false` |
 | `--course` `IDS` | Filtra por slug ou id de curso (separado por vírgula) | — |
 | `--lesson` `IDS` | Filtra por id de aula (separado por vírgula) | — |
 | `--ffmpeg` `CAMINHO` | Caminho do executável ffmpeg | auto-detecta |
@@ -234,7 +241,7 @@ Cada `.mp4` tem metadados embutidos:
 | `artist` | Nome do grupo |
 | `comment` | URL original da aula |
 
-Aulas marcadas como **"sem vídeo"** (`--dry-run` / execução real) são divisores de seção/trilha na sidebar da plataforma (sem vídeo de verdade) e são puladas automaticamente.
+Aulas marcadas como **"sem vídeo"** (`--ls` / execução real) são divisores de seção/trilha na sidebar da plataforma (sem vídeo de verdade) e são puladas automaticamente.
 
 ## Arquitetura
 
