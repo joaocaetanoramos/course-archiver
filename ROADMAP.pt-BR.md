@@ -16,6 +16,7 @@ Este documento acompanha a evolução planejada do `course-archiver`, a justific
 - ✅ Camada de rede resiliente: retries internos do yt-dlp (10/10), retry externo com backoff exponencial + jitter (`--retries`), throttling adaptativo de `concurrent` em resets de conexão, auto-regeneração do arquivo de cookie em erros `Netscape format`.
 - ✅ UI limpa com rich (barras sem sobreposição).
 - ✅ Instalável como CLI global via `pip install .` → `course-archiver`.
+- ✅ Hotmart Club funcionando de ponta a ponta: autenticação do gateway com `Authorization: Bearer <hmVlcIntegration>` (decodificado do cookie do domínio `consumer.hotmart.com`), HLS assinado da Akamai (AES-128) resolvido a partir da página cf-embed.
 - ✅ Documentação em inglês e português.
 
 ---

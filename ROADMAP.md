@@ -16,6 +16,7 @@ This document tracks the planned evolution of `course-archiver`, the rationale b
 - ✅ Resilient network layer: yt-dlp internal retries (10/10), outer retry with exponential backoff + jitter (`--retries`), adaptive `concurrent` throttling on connection resets, auto-regeneration of the cookie file on `Netscape format` errors.
 - ✅ Clean rich-powered terminal UI (no overlapping bars).
 - ✅ Installable as a global CLI via `pip install .` → `course-archiver`.
+- ✅ Hotmart Club working end-to-end: gateway authenticated with `Authorization: Bearer <hmVlcIntegration>` (URL-decoded from the `consumer.hotmart.com` cookie), signed Akamai HLS (AES-128) resolved from the cf-embed page.
 - ✅ English + Portuguese documentation.
 
 ---

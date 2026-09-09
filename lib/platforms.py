@@ -185,9 +185,8 @@ class HotmartPlatform(Platform):
                 "(não via cookies de sessão).\n"
                 "Exporte o cookie hmVlcIntegration logado em consumer.hotmart.com "
                 "(F12 > Application > Cookies > https://consumer.hotmart.com) e use --cookies.\n"
-                "Atenção: com --browser chrome/firefox o Chrome 127+ pode impedir a leitura "
-                "desse cookie (App-Bound Encryption) — nesse caso use --cookies com o arquivo "
-                "exportado manualmente."
+                "Exporte manualmente: o Chrome 127+ criptografa esse cookie "
+                "(App-Bound Encryption) e a leitura direta do navegador pode retorná-lo vazio."
             )
         return unquote(token)
 

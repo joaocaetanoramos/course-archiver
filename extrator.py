@@ -20,39 +20,6 @@ from lib.platforms import AuthError, detect_platform
 from lib.progress import ProgressBar, print_line
 
 
-def _load_browser_cookies(browser):
-    """Load ALL cookies from the given browser (chrome/firefox/chromium).
-
-    Returns a list of (name, value, domain, path, secure) tuples (raw) so we can
-    merge into a RequestsCookieJar ourselves. We do NOT rely on
-    browser_cookie3's CookieJar update because we want fine-grained
-    control (merge order, fallback) and to surface clear errors.
-    """
-    try:
-        import browser_cookie3
-    except ImportError as exc:
-        raise SystemExit(
-            "Para usar --browser é preciso instalar 'browser-cookie3': "
-            "pip install browser-cookie3"
-        ) from exc
-    loaders = {
-        "chrome": browser_cookie3.chrome,
-        "firefox": browser_cookie3.firefox,
-        "chromium": browser_cookie3.chromium,
-    }
-    try:
-        cj = loaders[browser]()
-    except Exception as exc:
-        raise SystemExit(
-            f"Não foi possível ler os cookies do {browser}: {exc}. "
-            "Feche o navegador e tente de novo, ou verifique se o keyring "
-            "está desbloqueado, ou passe --cookies arquivo."
-        ) from exc
-    raw = []
-    for c in cj:
-        raw.append((c.name, c.value, c.domain, c.path, c.secure))
-    return raw
-
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
@@ -85,13 +52,10 @@ def sanitize_filename(name):
 
 
 class App:
-    def __init__(self, url, cookies, output, parallel, dry_run, ffmpeg, only_courses, only_lessons, concurrent, retries, browser):
+    def __init__(self, url, cookies, output, parallel, dry_run, ffmpeg, only_courses, only_lessons, concurrent, retries):
         self.url = url
         self.host = urlparse(url).netloc
         self.cookie_jar = load_cookies(cookies, self.host) if cookies else requests.cookies.RequestsCookieJar()
-        if browser:
-            for name, value, domain, path, secure in _load_browser_cookies(browser):
-                self.cookie_jar.set(name, value, domain=domain, path=path or "/", secure=bool(secure))
         self.cookie_file = None
         if not dry_run and cookies:
             self.cookie_file = write_netscape_cookie_file(self.cookie_jar, self.host)
@@ -337,11 +301,7 @@ class App:
 def main():
     parser = argparse.ArgumentParser(description="Extrai vídeos de cursos para assistir offline.")
     parser.add_argument("url", help="URL do dashboard, do curso ou de um vídeo")
-    parser.add_argument("--cookies", help="Arquivo de cookies (Netscape/JSON) ou string 'Cookie:' crua")
-    parser.add_argument("--browser", choices=["chrome", "firefox", "chromium"],
-                        help="Carregar cookies diretamente do navegador (requer browser-cookie3). "
-                             "Captura cookies HttpOnly + cf_clearance automaticamente. "
-                             "Use --cookies E --browser para mesclar.")
+    parser.add_argument("--cookies", help="Arquivo de cookies (Netscape/JSON) ou string 'Cookie:' crua (obrigatório)")
     parser.add_argument("--output", default="./downloads", help="Diretório de saída")
     parser.add_argument("--parallel", type=int, default=1, help="Número de downloads em paralelo")
     parser.add_argument("--concurrent", type=int, default=8, help="Segmentos baixados em paralelo por vídeo")
@@ -351,10 +311,8 @@ def main():
     parser.add_argument("--course", help="Filtra por slug ou id de curso (separado por vírgula)")
     parser.add_argument("--lesson", help="Filtra por id de aula (separado por vírgula)")
     args = parser.parse_args()
-    if not args.cookies and not args.browser:
-        parser.error(
-            "informe --cookies arquivo.txt OU --browser {chrome,firefox,chromium}"
-        )
+    if not args.cookies:
+        parser.error("informe --cookies arquivo.txt")
 
     app = App(
         url=args.url,
@@ -367,7 +325,6 @@ def main():
         only_lessons=args.lesson,
         concurrent=args.concurrent,
         retries=args.retries,
-        browser=args.browser,
     )
     if not app.dry_run and not app.ffmpeg:
         raise SystemExit("ffmpeg não encontrado. Instale ou defina FFMPEG_PATH.")

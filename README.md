@@ -67,7 +67,7 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 | Platform | Auto-discovery | Video download | Notes |
 |---|---|---|---|
 | **Astron Members** (`*.astronmembers.com`) | ✅ | ✅ Bunny / PandaVideo / Scaleup / YouTube | Full course + module + lesson discovery from the dashboard sidebar. |
-| **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + separate audio track merged automatically. Requires fresh session cookie. |
+| **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + separate audio track merged automatically. Authenticates via `Authorization: Bearer <hmVlcIntegration>` cookie from `consumer.hotmart.com`. |
 | **Kiwify** (`*.kiwify.com`) | ✅ | ✅ HLS stream / direct download | May require a refresh token from localStorage. |
 | **Curseduca** (`*.curseduca.pro`) | ⚠️ detection only | — | Lesson listing pending. |
 | **Generic video URL** | — | ✅ via `yt-dlp` | Any m3u8 / mp4 / YouTube / Vimeo / Wistia link. |
@@ -156,7 +156,7 @@ The tool also accepts a raw `Cookie:` header string (e.g., copied from DevTools)
 
 > **Security:** the cookie file contains your session — treat it like a password. Do not share it. The `.gitignore` in this repo already excludes `cookie*.txt`.
 
-> **Hotmart:** the Club gateway does not authenticate with session cookies — it requires the `Authorization: Bearer <hmVlcIntegration>` header (value of the **hmVlcIntegration** cookie on `consumer.hotmart.com`). Export cookies logged in on that domain (DevTools → Application → Cookies). The value is URL-encoded; the tool decodes it automatically. With `--browser chrome/firefox`, Chrome 127+ encrypts this cookie (App-Bound Encryption) so it may come back empty — in that case use `--cookies` with a manually exported file.
+> **Hotmart:** the Club gateway does not authenticate with session cookies — it requires the `Authorization: Bearer <hmVlcIntegration>` header (value of the **hmVlcIntegration** cookie on `consumer.hotmart.com`). Export cookies logged in on that domain (DevTools → Application → Cookies). The value is URL-encoded; the tool decodes it automatically. Export manually and pass with `--cookies` — Chrome 127+ encrypts this cookie (App-Bound Encryption), so direct browser reads may return it empty.
 
 ## Usage
 
@@ -272,7 +272,8 @@ lib/
            v
 +--------------------+
 | 4. Extract video embed URL per lesson (platform.extract_video)
-|    GET lesson page, regex data-streaming-video / data-original-url
+|    Astron: GET lesson page, regex data-streaming-video / data-original-url
+|    Hotm:   GET gateway v2/web/lessons/{hash} (Bearer) → medias[].url embed
 +----------+---------+
            |
            v
@@ -374,6 +375,10 @@ The tool **automatically retries** with exponential backoff (2s → 4s → 8s, c
 ### A lesson shows "sem vídeo" (no video)
 
 The platform's sidebar may include section dividers ("Trilha: …", "Nota de atualização", etc.) that have no actual video. These are **skipped automatically**. If a real lesson shows "sem vídeo", the page returned no `data-streaming-video` — usually a transient rate-limit or an auth issue.
+
+### Hotmart: empty auth error (401) right after a fresh export
+
+The gateway rejects requests when the `hmVlcIntegration` token is missing, expired, or was truncated during export. Re-export the cookies logged in on `consumer.hotmart.com` (not the course page domain) and pass them with `--cookies`. The tool reads the `hmVlcIntegration` cookie value and sends it as `Authorization: Bearer <value>` (URL-encoded → decoded automatically).
 
 ### ffmpeg not found
 
