@@ -3,3 +3,4 @@ beautifulsoup4
 yt-dlp
 pycryptodomex
 rich
+browser-cookie3
