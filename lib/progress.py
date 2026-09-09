@@ -67,7 +67,12 @@ def listing_progress(total, desc):
     task_id = progress.add_task(desc, total=total)
     progress.start()
     try:
-        yield lambda done: progress.update(task_id, completed=done)
+        yield (
+            lambda done: progress.update(task_id, completed=done),
+            lambda text: progress.update(task_id, description=text),
+            progress,
+            task_id,
+        )
     finally:
         progress.stop()
 

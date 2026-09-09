@@ -62,6 +62,7 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 - 🪶 **Lossless** — direct remux (`-c copy`) to MP4. No re-encoding, no quality loss.
 - 💻 **Clean CLI** — rich-powered progress bars (no overlap), colored status lines, per-chapter headers.
 - 📊 **Size & duration estimates** — every `--ls` listing shows per-lesson size/duration plus per-chapter, per-course and grand totals; the download bar shows total size, speed, elapsed and ETA. Fully generic (probes the resolved stream: HLS bandwidth × `EXTINF` durations, or `Content-Range` for direct URLs), so it works for current and future platforms without changes. Best-effort — unknown values print `n/d` (e.g. YouTube).
+- 🐢 **Throttle-aware by default** — every request to the same host is paced (per-host minimum interval) and an HTTP `429` triggers a cooldown + one retry. If a host keeps answering `429` three times in a row, the probe stops and the remaining lessons of that course show `n/d` instead of the whole course disappearing; the next course starts fresh. So large listings just get slower instead of failing.
 
 ## Supported platforms
 

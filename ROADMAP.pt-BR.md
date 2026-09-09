@@ -112,10 +112,11 @@ Cada item tem: **Objetivo**, **Por quê**, **Status**, **Abordagem** (notas téc
 
 - **Objetivo:** ir além do binário `--parallel` / `--concurrent` atual e se adaptar automaticamente a características por servidor.
 - **Por quê:** CDNs diferentes têm perfis diferentes de rate-limit; um tamanho único não serve para todos.
-- **Status:** pesquisa.
+- **🔁 Backoff preventivo em throttling — FEITO.** Espaçamento por host (intervalo mínimo) em todo request + `429` → cooldown + 1 retry; após 3 `429` seguidos a sondagem degrada para `n/d` no resto daquele curso (o próximo curso começa zerado).
+- **Status:** parcial — pacing/cooldown feitos; ramp automático de concorrência ainda aberto.
 - **Abordagem:**
   - Sondar a primeira aula de um run com `--concurrent 1` e medir a vazão. Depois subir até o valor pedido pelo usuário.
-  - Acompanhar a taxa recente de `ConnectionResetError` / `429` e reduzir preventivamente (não só reativamente).
+  - Acompanhar a taxa recente de `ConnectionResetError` / `429` e reduzir preventivamente (não só reativamente). *(hoje: cooldown reativo por host)*
   - Opcional: integrar `pyrate-limiter` para rate limiting explícito por host com token-bucket.
 
 ---

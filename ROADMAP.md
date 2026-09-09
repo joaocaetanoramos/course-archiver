@@ -112,10 +112,11 @@ Each item has: **Goal**, **Why**, **Status**, **Approach** (technical notes for 
 
 - **Goal:** go beyond the current binary `--parallel` / `--concurrent` and adapt to per-server characteristics automatically.
 - **Why:** different CDNs have different rate-limit profiles; one size doesn't fit all.
-- **Status:** research.
+- 🔁 **Proactive back-off on throttling — DONE.** Per-host pacing (minimum interval) on every request plus `429` → cooldown + one retry; after 3 consecutive `429`s the probe degrades to `n/d` for the rest of that course (next course starts fresh).
+- **Status:** partial — pacing/cooldown done; auto-ramp of concurrency still open.
 - **Approach:**
   - Probe the first lesson of a run with `--concurrent 1` and measure throughput. Then ramp up to the user-requested value.
-  - Track recent `ConnectionResetError` / `429` rate and back off proactively (not just reactively).
+  - Track recent `ConnectionResetError` / `429` rate and back off proactively (not just reactively). *(currently: reactive per-host cooldown)*
   - Optional: integrate `pyrate-limiter` for explicit token-bucket rate limiting per host.
 
 ---

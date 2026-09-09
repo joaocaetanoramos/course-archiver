@@ -62,6 +62,7 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 - 🪶 **Lossless** — remux direto (`-c copy`) para MP4. Sem re-encoding, sem perda de qualidade.
 - 💻 **CLI limpo** — barras de progresso com rich (sem sobreposição), linhas de status coloridas, headers por capítulo.
 - 📊 **Estimativa de tamanho e duração** — todo `--ls` mostra tamanho/duração por aula além dos totais por capítulo, por curso e de todos os cursos juntos; a barra de download mostra tamanho total, velocidade, tempo decorrido e ETA. Totalmente genérico (sonda o stream resolvido: HLS via bandwidth × duração `EXTINF`, ou `Content-Range` para URLs diretas), funcionando para plataformas atuais e futuras sem mudanças. Best-effort — valores desconhecidos aparecem como `n/d` (ex.: YouTube).
+- 🐢 **Consciente de rate limit por padrão** — todo request ao mesmo host é espaçado (intervalo mínimo por host) e uma resposta `429` dispara um cooldown + 1 retry. Se um host responder `429` três vezes seguidas, a sondagem para e as aulas restantes daquele curso mostram `n/d` em vez de o curso inteiro sumir; o próximo curso começa zerado. Ou seja, listagens grandes apenas ficam mais lentas, em vez de falharem.
 
 ## Plataformas suportadas
 

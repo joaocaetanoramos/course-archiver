@@ -8,6 +8,10 @@ class AuthError(Exception):
     """Raised when the platform returns 401/403 — usually an expired cookie."""
 
 
+class RateLimitedError(Exception):
+    """Raised when the platform returns HTTP 429 — we are being throttled."""
+
+
 def get_json(session, url, headers=None, timeout=20):
     resp = session.get(url, headers=headers, timeout=timeout)
     content_type = resp.headers.get("content-type", "")
@@ -30,6 +34,9 @@ def get_json(session, url, headers=None, timeout=20):
                 "A sessão expirou. Faça login no navegador e reexporte os cookies."
             )
         raise AuthError(f"HTTP {resp.status_code} (autenticação) em {url}")
+
+    if resp.status_code == 429:
+        raise RateLimitedError(f"HTTP 429 (rate limit) em {url}")
 
     if resp.status_code != 200:
         raise RuntimeError(f"HTTP {resp.status_code} em {url}: {body[:200]}")
@@ -395,6 +402,10 @@ class MemberkitPlatform(Platform):
 
     def _get(self, session, url):
         resp = session.get(url, headers={"user-agent": self.USER_AGENT}, timeout=30)
+        if resp.status_code == 429:
+            raise RateLimitedError(
+                f"HTTP 429 em {url}. Muitas requisições — o servidor pediu para reduzir o ritmo."
+            )
         if resp.status_code in (401, 403):
             raise AuthError(
                 f"HTTP {resp.status_code} em {url}. Sessão do Memberkit expirada — "

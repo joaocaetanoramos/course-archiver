@@ -16,8 +16,9 @@ from urllib.parse import urlparse
 
 from lib import downloader, estimate, streams
 from lib.cookies import TolerantSession, load_cookies, validate_cookie_file, write_netscape_cookie_file
-from lib.platforms import AuthError, detect_platform
+from lib.platforms import AuthError, RateLimitedError, detect_platform
 from lib.progress import ProgressBar, listing_progress, print_line
+from lib.request import RequestPacer
 
 
 USER_AGENT = (
@@ -72,6 +73,10 @@ class App:
         self.only_lessons = set(filter(None, (only_lessons or "").split(",")))
         self._tls = threading.local()
         self._concurrent_lock = threading.Lock()
+        self.pacer = RequestPacer()
+        self._throttle_lock = threading.Lock()
+        self._throttle_hits = {}
+        self._bail_hosts = set()
 
     def session(self):
         s = getattr(self._tls, "session", None)
@@ -79,8 +84,29 @@ class App:
             s = TolerantSession()
             s.cookies.update(self.cookie_jar)
             s.headers.update({"User-Agent": USER_AGENT, "Referer": self.url})
+            self._gate_session(s)
             self._tls.session = s
         return s
+
+    def _gate_session(self, s):
+        def gated(method):
+            def inner(url, *args, **kwargs):
+                host = urlparse(url).netloc
+                self.pacer.wait(host)
+                resp = method(url, *args, **kwargs)
+                if getattr(resp, "status_code", None) == 429:
+                    self.pacer.note_throttle(host)
+                    self.pacer.wait(host)
+                    resp = method(url, *args, **kwargs)
+                    if getattr(resp, "status_code", None) == 429:
+                        exc = RateLimitedError(f"HTTP 429 em {url} (após cooldown)")
+                        exc.host = host
+                        raise exc
+                return resp
+            return inner
+
+        s.get = gated(s.get)
+        s.post = gated(s.post)
 
     def _select_courses(self, courses):
         for course in courses:
@@ -93,6 +119,10 @@ class App:
     def _load_lessons(self, platform, course):
         try:
             lessons = platform.list_lessons(course, self.session())
+        except RateLimitedError as exc:
+            title = course.get("title") or course.get("id") or "?"
+            print_line(f"  [yellow]Erro ao listar aulas de {title}:[/yellow] {exc} (rate limit)")
+            return None
         except Exception as exc:
             title = course.get("title") or course.get("id") or "?"
             print_line(f"  [red]Erro ao listar aulas de {title}:[/red] {exc}")
@@ -103,22 +133,49 @@ class App:
             if not self.only_lessons or lesson["id"] in self.only_lessons
         ]
 
+    def _note_probe_throttle(self, host):
+        with self._throttle_lock:
+            self._throttle_hits[host] = self._throttle_hits.get(host, 0) + 1
+            if self._throttle_hits[host] >= 3:
+                self._bail_hosts.add(host)
+
+    def _note_probe_success(self, host):
+        with self._throttle_lock:
+            self._throttle_hits[host] = 0
+
+    def _should_bail(self, host):
+        with self._throttle_lock:
+            return host in self._bail_hosts
+
     def _lesson_estimate(self, platform, course, lesson, idx):
+        host = urlparse(lesson.get("url") or "").netloc
         try:
             session = self.session()
             embed = platform.extract_video(lesson, session)
             if not embed:
                 return (None, None)
             stream = streams.resolve_stream(embed, session)
-            return estimate.probe_stream(stream, session)
+            est = estimate.probe_stream(stream, session)
+            self._note_probe_success(host)
+            return est
+        except RateLimitedError as exc:
+            self._note_probe_throttle(getattr(exc, "host", None) or host)
+            return (None, None)
         except Exception:
             return (None, None)
 
     def _probe_lessons(self, platform, course, lessons):
         est_by_idx = {}
+        with self._throttle_lock:
+            self._bail_hosts.clear()
+            self._throttle_hits.clear()
 
         def run(idx, lesson):
-            est = self._lesson_estimate(platform, course, lesson, idx)
+            host = urlparse(lesson.get("url") or "").netloc
+            if self._should_bail(host):
+                est = (None, None)
+            else:
+                est = self._lesson_estimate(platform, course, lesson, idx)
             time.sleep(random.uniform(0.02, 0.08))
             return idx, est
 
@@ -140,9 +197,16 @@ class App:
                         yield done
 
         title = self._shorten(course.get("title") or course.get("id") or "?", 40)
-        with listing_progress(len(lessons), f"Listando {title}…") as update:
+        host = urlparse(course.get("url") or course.get("id") or "").netloc
+        base_desc = f"Listando {title}…"
+
+        with listing_progress(len(lessons), base_desc) as (update, set_desc, _progress, _task_id):
             for done in do_probe():
                 update(done)
+                if self.pacer.throttled(host):
+                    set_desc(base_desc + " [yellow](rate limit…)[/yellow]")
+                else:
+                    set_desc(base_desc)
         return est_by_idx
 
     @staticmethod
@@ -179,23 +243,22 @@ class App:
         return " · ".join(parts)
 
     def _list(self, platform, courses):
-        courses_data = []
-        for course in self._select_courses(courses):
-            lessons = self._load_lessons(platform, course)
-            if not lessons:
-                continue
-            est_by_idx = self._probe_lessons(platform, course, lessons)
-            courses_data.append((course, lessons, est_by_idx))
-
         grand_size = 0
         grand_dur = 0.0
         grand_lessons = 0
+        grand_courses = 0
 
-        for course, lessons, est_by_idx in courses_data:
+        for course in self._select_courses(courses):
             cid = course.get("course_id", course.get("id", ""))
             slug = course.get("slug") or course.get("url") or ""
             print_line()
             print_line(f"[bold]{course.get('title') or cid}[/bold]  [dim]id={cid} | {slug}[/dim]")
+
+            lessons = self._load_lessons(platform, course)
+            if not lessons:
+                continue
+
+            est_by_idx = self._probe_lessons(platform, course, lessons)
 
             chapters = {}
             for idx, lesson in lessons:
@@ -225,12 +288,13 @@ class App:
             grand_size += c_size
             grand_dur += c_dur
             grand_lessons += len(lessons)
+            grand_courses += 1
 
         print_line()
         print_line(
             f"[bold underline]Total:[/bold underline] "
             f"{self._totals_str(grand_lessons, grand_size, grand_dur)} "
-            f"em {len(courses_data)} curso(s)."
+            f"em {grand_courses} curso(s)."
         )
 
     def run(self):
