@@ -4,12 +4,15 @@ All notable changes to **course-archiver** are documented here.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.2.0] — 2026-09-10
 
 ### Added
 - **Localized UI (i18n)** — the interface follows the system language: English by default, Portuguese when the system locale is `pt`. New `--lang {auto,en,pt}` flag overrides detection (`LC_ALL` / `LC_MESSAGES` / `LANG`, then `locale.getlocale()`, else English).
   - All console messages centralized in `lib/i18n.py`; plural-aware `nt()` and decimal-separator localization (PT uses `,`).
   - Adding a language = one new dict in `MESSAGES` + entries in `LANGUAGES` and `PLURAL_FORM_COUNT`; missing keys fall back to English.
+
+### Changed
+- New logo in the READMEs (`course-archiver.png`).
 
 ## [2.1.0] — 2026-09-10
 
