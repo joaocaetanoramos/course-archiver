@@ -43,13 +43,14 @@ Cada item tem: **Objetivo**, **Por quê**, **Status**, **Abordagem** (notas téc
 
 - **Objetivo:** estender os adaptadores para que, além do vídeo, a ferramenta também baixe quaisquer arquivos anexos (PDFs, planilhas, áudios, materiais de apoio) de cada aula na mesma pasta.
 - **Por quê:** muitas aulas vêm com listas de leitura, templates ou exercícios. Baixar só o vídeo é incompleto.
-- **Status:** planejado (v2.x).
-- **Abordagem / fontes já mapeadas:**
-  - **Kiwify:** `lesson.files` já está presente na resposta de `lesson/{id}` (`v1/viewer/courses/{cid}/lesson/{lid}`). O adaptador só precisa expor isso e passar para uma nova rota genérica de download de anexos.
-  - **Hotmart:** `v2/web/lessons/{hash}` retorna `medias[]` (algumas entradas não são `VIDEO`, ex.: PDF). Também `v1/pages/{hash}/complementary-content`. Filtrar `medias` por `type != "VIDEO"` e baixar.
+- **Status:** **implementado** para Hotmart e Memberkit (v2.x). Kiwify e Astron pendentes.
+- **Implementado:**
+  - **Hotmart:** `GET v1/pages/{hash}/complementary-content` (Bearer) → `attachments[]` baixados em `downloads/<grupo>/<curso>/<capítulo>/Anexos/`, com dedup por nome+tamanho (`lib/materials.unique_path`); `complementaryReadings[]` (links) viram atalhos `.url`. Arquivos protegidos (resposta `lambdaUrl`+`token`) são resolvidos automaticamente (GET `lambdaUrl` com header `token` → URL real). Download via `api-club-hot-club-api.cb.hotmart.com/rest/v3/attachment/{fileMembershipId}/download` → `directDownloadUrl` (CDN `hotmart-club-files.cb.hotmart.com`, suporta Range). Anexos aparecem nas estimativas do `--ls` (`+N anexo(s) · X`).
+  - **Memberkit:** varredura best-effort da página da aula por links de arquivos (.pdf/.zip/…), aproveitando o cache `_lesson_html` usado pelo extract_video (sem request extra).
+- **Pendente / fontes mapeadas:**
+  - **Kiwify:** `lesson.files` já está presente na resposta de `lesson/{id}` (`v1/viewer/courses/{cid}/lesson/{lid}`). O adaptador só precisa expor isso e passar para a rota genérica `lib/materials.download_file`.
   - **Astron Members:** investigar o HTML da página da aula por `<a href="...">` de download (algumas plataformas expõem `.pdf`/`.zip` na descrição ou sidebar).
-  - Comum: adicionar um campo `lesson["attachments"] = [...]`, obtido em `extract_video` ou em um novo passo `extract_attachments`; baixar com `requests` (não precisa de yt-dlp) para `downloads/<grupo>/<curso>/`.
-  - Nomeação: `<NN> - <lesson_title> - <attachment_name>.<ext>`.
+  - Adicionar um campo `lesson["attachments"] = [...]`, obtido em `extract_video` ou em um novo passo `extract_attachments`.
 
 ### 3. Curseduca — descoberta de aulas
 
@@ -150,8 +151,8 @@ Para manter o foco e preservar a posição legal do projeto, os itens a seguir e
 
 ## Versionamento
 
-- **v2.x:** linha estável atual (multi-plataforma, rede resiliente, UI rica).
-- **v3.0 (planejado):** materiais complementares, extensão Chrome, descoberta Curseduca — ou seja, itens 1–3 acima.
+- **v2.x:** linha estável atual (multi-plataforma, rede resiliente, UI rica, anexos/materiais para Hotmart e Memberkit).
+- **v3.0 (planejado):** extensão Chrome, descoberta Curseduca, materiais para Kiwify/Astron — ou seja, itens 1 e 3 acima + pendências do item 2.
 
 Versões seguem [Semantic Versioning](https://semver.org/).
 

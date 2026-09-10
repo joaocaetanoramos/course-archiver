@@ -1,5 +1,5 @@
 import re
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -56,6 +56,12 @@ class Platform:
         raise NotImplementedError
 
     def extract_video(self, lesson, session):
+        raise NotImplementedError
+
+    def materials(self, lesson, session):
+        return []
+
+    def resolve_material_file(self, item, lesson, session):
         raise NotImplementedError
 
 
@@ -195,7 +201,7 @@ class HotmartPlatform(Platform):
                 "Exporte manualmente: o Chrome 127+ criptografa esse cookie "
                 "(App-Bound Encryption) e a leitura direta do navegador pode retorná-lo vazio."
             )
-        return unquote(token)
+        return token
 
     def _headers(self, session, slug, product_id):
         return {
@@ -268,6 +274,50 @@ class HotmartPlatform(Platform):
             if media.get("type") == "VIDEO" and media.get("url"):
                 return media["url"]
         return None
+
+    def materials(self, lesson, session):
+        headers = self._headers(session, lesson["_slug"], lesson["_product_id"])
+        data = get_json(
+            session,
+            f"{self.GATEWAY}/v1/pages/{lesson['_hash']}/complementary-content",
+            headers=headers,
+        )
+        out = []
+        for att in data.get("attachments", []):
+            out.append({
+                "kind": "file",
+                "name": att.get("fileName") or "arquivo",
+                "size": att.get("fileSize"),
+                "ref": ("hotmart-attachment", att.get("fileMembershipId")),
+            })
+        for r in data.get("complementaryReadings", []):
+            url = r.get("articleUrl")
+            if url:
+                out.append({
+                    "kind": "link",
+                    "name": r.get("articleName") or "link",
+                    "url": url,
+                })
+        return out
+
+    def resolve_material_file(self, item, lesson, session):
+        _kind, mid = item["ref"]
+        base = "https://api-club-hot-club-api.cb.hotmart.com/rest/v3/attachment"
+        headers = {
+            "slug": lesson["_slug"],
+            "x-product-id": lesson["_product_id"],
+            "Authorization": f"Bearer {self._bearer(session)}",
+            "accept": "application/json",
+            "origin": "https://consumer.hotmart.com",
+            "referer": "https://consumer.hotmart.com/",
+            "Accept-Language": "pt-BR,pt;q=0.8,en-US;q=0.5,en;q=0.3",
+        }
+        data = get_json(session, f"{base}/{mid}/download", headers=headers)
+        if data.get("directDownloadUrl"):
+            return data["directDownloadUrl"], {}
+        if data.get("lambdaUrl"):
+            return data["lambdaUrl"], {"token": data.get("token")}
+        raise RuntimeError("Hotmart: resposta de anexo sem URL de download.")
 
 
 class KiwifyPlatform(Platform):
@@ -485,13 +535,51 @@ class MemberkitPlatform(Platform):
         return lessons
 
     def extract_video(self, lesson, session):
-        html = self._get(session, lesson["url"])
+        html = self._lesson_html(lesson, session)
         m = re.search(r'data-vimeo-uid-value="(\d+)"', html)
         if not m:
             return None
         uid = m.group(1)
         ref = f"https://player.vimeo.com/video/{uid}"
         return f"{ref}?memberkit_ref={lesson['url']}"
+
+    def _lesson_html(self, lesson, session):
+        html = lesson.get("_html_raw")
+        if html is None:
+            html = self._get(session, lesson["url"])
+            lesson["_html_raw"] = html
+        return html
+
+    FILE_EXT_RE = re.compile(r"\.(?:pdf|zip|rar|7z|xlsx|xls|pptx|ppt|docx|doc|mp3|wav|jpg|jpeg|png|gif|csv|txt)$", re.IGNORECASE)
+
+    def materials(self, lesson, session):
+        try:
+            html = self._lesson_html(lesson, session)
+        except Exception:
+            return []
+        soup = BeautifulSoup(html, "html.parser")
+        soup = BeautifulSoup(html, "html.parser")
+        out = []
+        seen = set()
+        for a in soup.select("a[href]"):
+            href = a.get("href", "").strip()
+            if not href or href.startswith(("javascript:", "#")):
+                continue
+            if not self.FILE_EXT_RE.search(href):
+                continue
+            if href in seen:
+                continue
+            seen.add(href)
+            out.append({
+                "kind": "file",
+                "name": a.get_text(strip=True) or href.rsplit("/", 1)[-1],
+                "size": None,
+                "url": urljoin(lesson["url"], href),
+            })
+        return out
+
+    def resolve_material_file(self, item, lesson, session):
+        return item["url"], {}
 
 
 PLATFORMS = [AstronPlatform(), HotmartPlatform(), KiwifyPlatform(), CurseducaPlatform(), MemberkitPlatform()]

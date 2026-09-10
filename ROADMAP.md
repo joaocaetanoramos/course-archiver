@@ -43,13 +43,14 @@ Each item has: **Goal**, **Why**, **Status**, **Approach** (technical notes for 
 
 - **Goal:** extend the adapters so that, in addition to the video, the tool also downloads any attached files (PDFs, spreadsheets, audio, support material) for each lesson into the same folder.
 - **Why:** many lessons come with reading lists, templates, or exercises. Downloading just the video is incomplete.
-- **Status:** planned (v2.x).
-- **Approach / already-mapped sources:**
-  - **Kiwify:** `lesson.files` is already present in the `lesson/{id}` response (`v1/viewer/courses/{cid}/lesson/{lid}`). The adapter just needs to surface it and pass it to a new generic attachment-download path.
-  - **Hotmart:** `v2/web/lessons/{hash}` returns `medias[]` (some entries are non-`VIDEO`, e.g. PDF). Also `v1/pages/{hash}/complementary-content`. Filter `medias` by `type != "VIDEO"` and download them.
+- **Status:** **implemented** for Hotmart and Memberkit (v2.x). Kiwify and Astron pending.
+- **Implemented:**
+  - **Hotmart:** `GET v1/pages/{hash}/complementary-content` (Bearer) → `attachments[]` downloaded into `downloads/<group>/<course>/<chapter>/Anexos/`, deduped by name+size (`lib/materials.unique_path`); `complementaryReadings[]` (links) become `.url` shortcuts. DRM-protected files (lambda) are resolved automatically (GET `lambdaUrl` with a `token` header → real URL). Download via `api-club-hot-club-api.cb.hotmart.com/rest/v3/attachment/{fileMembershipId}/download` → `directDownloadUrl` (CDN `hotmart-club-files.cb.hotmart.com`, Range-capable). Attachments appear in `--ls` estimates (`+N anexo(s) · X`).
+  - **Memberkit:** best-effort scan of the lesson page for file links (.pdf/.zip/…), reusing the `_lesson_html` cache used by `extract_video` (no extra request).
+- **Pending / mapped sources:**
+  - **Kiwify:** `lesson.files` is already present in the `lesson/{id}` response (`v1/viewer/courses/{cid}/lesson/{lid}`). The adapter just needs to surface it and pass it to the generic `lib/materials.download_file` path.
   - **Astron Members:** investigate the lesson page HTML for `<a href="...">` download links (some platforms expose `.pdf` / `.zip` in the description or sidebar).
-  - Common: add a `lesson["attachments"] = [...]` field, fetched in `extract_video` or in a new `extract_attachments` step; download them with `requests` (no yt-dlp needed) into `downloads/<group>/<course>/`.
-  - File naming: `<NN> - <lesson_title> - <attachment_name>.<ext>`.
+  - Add a `lesson["attachments"] = [...]` field, fetched in `extract_video` or in a new `extract_attachments` step.
 
 ### 3. Curseduca — lesson discovery
 
@@ -150,8 +151,8 @@ To stay focused and to keep the project's legal position clean, the following ar
 
 ## Versioning
 
-- **v2.x:** current stable line (multi-platform, resilient network, rich UI).
-- **v3.0 (planned):** supplementary materials, Chrome extension, Curseduca discovery — i.e. items 1–3 above.
+- **v2.x:** current stable line (multi-platform, resilient network, rich UI, attachments/materials for Hotmart and Memberkit).
+- **v3.0 (planned):** Chrome extension, Curseduca discovery, materials for Kiwify/Astron — i.e. items 1 and 3 above + item 2 leftovers.
 
 Versions follow [Semantic Versioning](https://semver.org/).
 

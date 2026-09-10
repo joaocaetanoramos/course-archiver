@@ -63,15 +63,16 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 - 💻 **CLI limpo** — barras de progresso com rich (sem sobreposição), linhas de status coloridas, headers por capítulo.
 - 📊 **Estimativa de tamanho e duração** — todo `--ls` mostra tamanho/duração por aula além dos totais por capítulo, por curso e de todos os cursos juntos; a barra de download mostra tamanho total, velocidade, tempo decorrido e ETA. Totalmente genérico (sonda o stream resolvido: HLS via bandwidth × duração `EXTINF`, ou `Content-Range` para URLs diretas), funcionando para plataformas atuais e futuras sem mudanças. Best-effort — valores desconhecidos aparecem como `n/d` (ex.: YouTube).
 - 🐢 **Consciente de rate limit por padrão** — todo request ao mesmo host é espaçado (intervalo mínimo por host) e uma resposta `429` dispara um cooldown + 1 retry. Se um host responder `429` três vezes seguidas, a sondagem para e as aulas restantes daquele curso mostram `n/d` em vez de o curso inteiro sumir; o próximo curso começa zerado. Ou seja, listagens grandes apenas ficam mais lentas, em vez de falharem.
+- 📎 **Anexos por aula** — além do vídeo, baixa arquivos complementares (PDFs, planilhas, áudios…) de cada aula em uma pasta `Anexos/` dentro do capítulo, com dedup por nome+tamanho; links complementares (`complementaryReadings`) viram atalhos `.url`. Os anexos somam nas estimativas do `--ls` (`+N anexo(s) · X`). Suportado na Hotmart (`v1/pages/{hash}/complementary-content`) e Memberkit (varredura best-effort da página da aula); arquivos com proteção DRM (lambda) são resolvidos automaticamente.
 
 ## Plataformas suportadas
 
 | Plataforma | Descoberta auto | Download de vídeo | Observações |
 |---|---|---|---|
 | **Astron Members** (`*.astronmembers.com`) | ✅ | ✅ Bunny / PandaVideo / Scaleup / YouTube | Descoberta completa de curso/módulo/aula a partir da sidebar do dashboard. |
-| **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + áudio separado mesclado automaticamente. Autentica via `Authorization: Bearer <hmVlcIntegration>` (cookie do domínio `consumer.hotmart.com`). |
+| **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + áudio separado mesclado automaticamente. Autentica via `Authorization: Bearer <hmVlcIntegration>` (cookie do domínio `consumer.hotmart.com`). Baixa anexos (`complementary-content`) em `Anexos/`. |
 | **Kiwify** (`*.kiwify.com`) | ✅ | ✅ HLS stream / download direto | Pode exigir refresh token do localStorage. |
-| **Memberkit** (`*.memberkit.com.br`) | ✅ | ✅ HLS (Vimeo player) | Vídeos hospedados no Vimeo com URL assinada; HLS resolvido via config do player. Apenas cookies do domínio. |
+| **Memberkit** (`*.memberkit.com.br`) | ✅ | ✅ HLS (Vimeo player) | Vídeos hospedados no Vimeo com URL assinada; HLS resolvido via config do player. Apenas cookies do domínio. Anexos: varredura best-effort de arquivos na página da aula. |
 | **Curseduca** (`*.curseduca.pro`) | ⚠️ apenas detecção | — | Listagem de aulas pendente. |
 | **URL genérica de vídeo** | — | ✅ via `yt-dlp` | Qualquer link m3u8 / mp4 / YouTube / Vimeo / Wistia. |
 
@@ -159,7 +160,7 @@ A ferramenta também aceita uma string `Cookie:` crua (ex.: copiada do DevTools)
 
 > **Segurança:** o arquivo de cookie contém sua sessão — trate como senha. Não compartilhe. O `.gitignore` deste repo já exclui `cookie*.txt`.
 
-> **Hotmart:** o gateway do Club não autentica via cookie de sessão — exige o header `Authorization: Bearer <hmVlcIntegration>` (copia o valor do cookie **hmVlcIntegration** do domínio `consumer.hotmart.com`). Exporte os cookies logados nesse domínio (F12 → Application → Cookies). O valor é URL-encoded; a ferramenta decodifica automaticamente. Exporte manualmente e passe com `--cookies` — o Chrome 127+ criptografa esse cookie (App-Bound Encryption) e a leitura direta do navegador pode retorná-lo vazio.
+> **Hotmart:** o gateway do Club não autentica via cookie de sessão — exige o header `Authorization: Bearer <hmVlcIntegration>` (copia o valor do cookie **hmVlcIntegration** do domínio `consumer.hotmart.com`). Exporte os cookies logados nesse domínio (F12 → Application → Cookies). O valor é URL-encoded; a ferramenta usa o valor **cru** como veio do cookie (sem decodificar — decodificar corrompe o token). Exporte manualmente e passe com `--cookies` — o Chrome 127+ criptografa esse cookie (App-Bound Encryption) e a leitura direta do navegador pode retorná-lo vazio.
 
 ## Uso
 
@@ -230,11 +231,17 @@ Os arquivos são organizados por **grupo → curso → aula**:
 downloads/
 └── <Nome do Grupo>/
     └── <Nome do Curso>/
-        ├── 01 - Aula 1.1 - Introdução.mp4
-        ├── 02 - Aula 1.2 - Conceitos.mp4
-        ├── 03 - Trilha: RESUMO (sem vídeo)        # pulado (divisores de trilha)
-        └── 04 - Aula 1.3 - Aprofundamento.mp4
+        └── 01 - Capítulo 1/
+            ├── 01 - Aula 1.1 - Introdução.mp4
+            ├── 02 - Aula 1.2 - Conceitos.mp4
+            ├── 03 - Trilha: RESUMO (sem vídeo)      # pulado (divisores de trilha)
+            ├── 04 - Aula 1.3 - Aprofundamento.mp4
+            └── Anexos/                              # materiais complementares das aulas
+                ├── Apostila da aula 1.pdf           # arquivos de cada aula
+                └── Material externo.url             # links complementares (atalho .url)
 ```
+
+Os anexos de cada aula são baixados em `Anexos/` dentro do capítulo ao qual a aula pertence; arquivos com o mesmo nome+tamanho não são re-baixados em execuções seguintes.
 
 Cada `.mp4` tem metadados embutidos:
 
@@ -259,6 +266,7 @@ lib/
   streams.py         # Resolve URL de embed do host de vídeo → master m3u8 (Bunny / PandaVideo / Scaleup / Hotmart / YouTube)
   downloader.py      # O download em si: yt-dlp nativo HLS, `concurrent_fragment_downloads`, remux `-c copy`, metadados
   estimate.py        # Estimativas de tamanho/duração: sonda o stream resolvido (HLS bandwidth × EXTINF, ou direto via Content-Range)
+  materials.py       # Download de anexos: download_file (stream .part), dedup por nome+tamanho, atalhos .url
   progress.py        # Barras de progresso com Rich (uma por vídeo, empilhadas, sem sobreposição)
 ```
 
@@ -287,6 +295,7 @@ lib/
 | 4. Extrai URL de embed do vídeo por aula (platform.extract_video)
 |    Astron: GET página da aula, regex data-streaming-video / data-original-url
 |    Hotm:   GET gateway v2/web/lessons/{hash} (Bearer) → medias[].url embed
+|    Anexos: platform.materials() (Hotm: v1/pages/{hash}/complementary-content) → processados no download
 +----------+---------+
            |
            v
@@ -312,7 +321,8 @@ lib/
            |
            v
 +--------------------+
-| 7. Salva em downloads/<grupo>/<curso>/<NN> - <título>.mp4
+| 7. Salva em downloads/<grupo>/<curso>/<capítulo>/<NN> - <título>.mp4
+|    e baixa anexos em <capítulo>/Anexos/ (dedup nome+tamanho; links → .url)
 +--------------------+
 ```
 

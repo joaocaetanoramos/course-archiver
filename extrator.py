@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlparse
 
-from lib import downloader, estimate, streams
+from lib import downloader, estimate, materials, streams
 from lib.cookies import TolerantSession, load_cookies, validate_cookie_file, write_netscape_cookie_file
 from lib.platforms import AuthError, RateLimitedError, detect_platform
 from lib.progress import ProgressBar, listing_progress, print_line
@@ -152,17 +152,29 @@ class App:
         try:
             session = self.session()
             embed = platform.extract_video(lesson, session)
-            if not embed:
-                return (None, None)
-            stream = streams.resolve_stream(embed, session)
-            est = estimate.probe_stream(stream, session)
+            size = None
+            dur = None
+            if embed:
+                stream = streams.resolve_stream(embed, session)
+                size, dur = estimate.probe_stream(stream, session)
             self._note_probe_success(host)
-            return est
+            n_files = 0
+            fbytes = 0
+            try:
+                for item in platform.materials(lesson, session):
+                    if item.get("kind") == "file":
+                        n_files += 1
+                        fbytes += item.get("size") or 0
+            except RateLimitedError as exc:
+                self._note_probe_throttle(getattr(exc, "host", None) or host)
+            except Exception:
+                pass
+            return (size, dur, n_files, fbytes)
         except RateLimitedError as exc:
             self._note_probe_throttle(getattr(exc, "host", None) or host)
-            return (None, None)
+            return (None, None, 0, 0)
         except Exception:
-            return (None, None)
+            return (None, None, 0, 0)
 
     def _probe_lessons(self, platform, course, lessons):
         est_by_idx = {}
@@ -210,7 +222,7 @@ class App:
         return est_by_idx
 
     @staticmethod
-    def _est_str(size, duration):
+    def _est_str(size, duration, n_files=0, fbytes=0):
         parts = []
         d = estimate.format_duration(duration)
         s = estimate.format_bytes(size)
@@ -218,21 +230,33 @@ class App:
             parts.append(d)
         if s != "n/d":
             parts.append(s)
+        anexos = []
+        if n_files:
+            anexos.append(f"{n_files} anexo(s)")
+        fs = estimate.format_bytes(fbytes)
+        if fbytes and fs != "n/d":
+            anexos.append(fs)
+        if anexos:
+            parts.append("+ " + " · ".join(anexos))
         return " · ".join(parts) if parts else "n/d"
 
     @staticmethod
     def _sum_est(items):
         size = 0
         dur = 0.0
-        for _, _, (s, d) in items:
+        files = 0
+        fbytes = 0
+        for _, _, (s, d, n, fb) in items:
             if s:
                 size += s
             if d:
                 dur += d
-        return size, dur
+            files += n
+            fbytes += fb
+        return size, dur, files, fbytes
 
     @staticmethod
-    def _totals_str(n, size, duration):
+    def _totals_str(n, size, duration, files=0, fbytes=0):
         parts = [f"{n} aula(s)"]
         s = estimate.format_bytes(size)
         if s != "n/d":
@@ -240,6 +264,12 @@ class App:
         d = estimate.format_duration(duration)
         if d:
             parts.append(d)
+        if files:
+            anexos = f"+{files} anexo(s)"
+            fs = estimate.format_bytes(fbytes)
+            if fbytes and fs != "n/d":
+                anexos += f" · {fs}"
+            parts.append(anexos)
         return " · ".join(parts)
 
     def _list(self, platform, courses):
@@ -247,6 +277,8 @@ class App:
         grand_dur = 0.0
         grand_lessons = 0
         grand_courses = 0
+        grand_files = 0
+        grand_fbytes = 0
 
         for course in self._select_courses(courses):
             cid = course.get("course_id", course.get("id", ""))
@@ -267,33 +299,35 @@ class App:
 
             if self.ls in ("chapters", "lessons"):
                 for chapter, items in chapters.items():
-                    c_items = [(idx, lesson, est_by_idx.get(idx, (None, None))) for idx, lesson in items]
-                    ch_size, ch_dur = self._sum_est(c_items)
+                    c_items = [(idx, lesson, est_by_idx.get(idx, (None, None, 0, 0))) for idx, lesson in items]
+                    ch_size, ch_dur, ch_files, ch_fbytes = self._sum_est(c_items)
                     print_line(
                         f"  [bold underline]{chapter}[/bold underline]  "
-                        f"[dim]({self._totals_str(len(items), ch_size, ch_dur)})[/dim]"
+                        f"[dim]({self._totals_str(len(items), ch_size, ch_dur, ch_files, ch_fbytes)})[/dim]"
                     )
                     if self.ls == "lessons":
                         for idx, lesson in items:
-                            size, duration = est_by_idx.get(idx, (None, None))
+                            size, duration, n_files, fbytes = est_by_idx.get(idx, (None, None, 0, 0))
                             print_line(
                                 f"    [dim]{lesson['id']:<12}[/dim] {lesson['title']}  "
-                                f"[dim]({self._est_str(size, duration)})[/dim]"
+                                f"[dim]({self._est_str(size, duration, n_files, fbytes)})[/dim]"
                             )
 
-            c_items = [(idx, lesson, est_by_idx.get(idx, (None, None))) for idx, lesson in lessons]
-            c_size, c_dur = self._sum_est(c_items)
-            print_line(f"  [dim]{self._totals_str(len(lessons), c_size, c_dur)}[/dim]")
+            c_items = [(idx, lesson, est_by_idx.get(idx, (None, None, 0, 0))) for idx, lesson in lessons]
+            c_size, c_dur, c_files, c_fbytes = self._sum_est(c_items)
+            print_line(f"  [dim]{self._totals_str(len(lessons), c_size, c_dur, c_files, c_fbytes)}[/dim]")
 
             grand_size += c_size
             grand_dur += c_dur
+            grand_files += c_files
+            grand_fbytes += c_fbytes
             grand_lessons += len(lessons)
             grand_courses += 1
 
         print_line()
         print_line(
             f"[bold underline]Total:[/bold underline] "
-            f"{self._totals_str(grand_lessons, grand_size, grand_dur)} "
+            f"{self._totals_str(grand_lessons, grand_size, grand_dur, grand_files, grand_fbytes)} "
             f"em {grand_courses} curso(s)."
         )
 
@@ -353,6 +387,12 @@ class App:
             title = res["lesson"]["title"]
             if status in ("baixado", "ja-baixado"):
                 suffix = f"  [dim]({estimate.format_bytes(res.get('size'))})[/dim]" if res.get("size") else ""
+                if res.get("anexos"):
+                    ax = f" +{res['anexos']} anexo(s)"
+                    bs = estimate.format_bytes(res.get("anexo_size"))
+                    if bs != "n/d" and res.get("anexo_size"):
+                        ax += f" · {bs}"
+                    suffix += f" [dim]{ax}[/dim]"
                 print_line(f"[green]{k}/{total}[/green] [bold]{title}[/bold]{suffix}")
             elif status == "sem-video":
                 print_line(f"[dim]{k}/{total} — {title} (sem vídeo)[/dim]")
@@ -381,9 +421,21 @@ class App:
         errs = sum(1 for r in results if r.get("status") == "erro")
         skipped = sum(1 for r in results if r.get("status") == "sem-video")
         totale = sum(r.get("size") or 0 for r in results)
-        summary = f"  → {ok} baixado(s), {skipped} sem vídeo, {errs} erro(s)."
+        anexos = sum(r.get("anexos") or 0 for r in results)
+        anexo_bytes = sum(r.get("anexo_size") or 0 for r in results)
+        anexo_errs = sum(r.get("anexo_errors") or 0 for r in results)
+        summary = f"  → {ok} baixado(s), {skipped} sem vídeo, {errs} erro(s)"
         if totale:
-            summary = summary[:-1] + f" · {estimate.format_bytes(totale)}."
+            summary += f" · {estimate.format_bytes(totale)}"
+        if anexos:
+            ax = f" + {anexos} anexo(s)"
+            bs = estimate.format_bytes(anexo_bytes)
+            if anexo_bytes:
+                ax += f" · {bs}"
+            summary += ax
+        if anexo_errs:
+            summary += f" ({anexo_errs} anexo(s) com erro)"
+        summary += "."
         print_line(summary)
 
     def _throttle_down(self):
@@ -410,16 +462,18 @@ class App:
         base_name = f"{idx:02d} - {sanitize_filename(lesson['title'])}"
         dest_mp4 = lesson_dir / (base_name + ".mp4")
 
+        mat = self._process_materials(platform, lesson, session, lesson_dir)
+
         if dest_mp4.exists():
             try:
                 size = dest_mp4.stat().st_size
             except OSError:
                 size = None
-            return {"lesson": lesson, "status": "ja-baixado", "size": size}
+            return {**mat, "lesson": lesson, "status": "ja-baixado", "size": size}
 
         embed = platform.extract_video(lesson, session)
         if not embed:
-            return {"lesson": lesson, "status": "sem-video"}
+            return {**mat, "lesson": lesson, "status": "sem-video"}
         stream = streams.resolve_stream(embed, session)
         probe_size, _ = estimate.probe_stream(stream, session)
 
@@ -469,6 +523,7 @@ class App:
                     except OSError:
                         size = stats["value"] or stats["total"]
                     return {
+                        **mat,
                         "lesson": lesson,
                         "status": "baixado",
                         "size": size,
@@ -506,12 +561,61 @@ class App:
                     time.sleep(backoff)
 
             return {
+                **mat,
                 "lesson": lesson,
                 "status": "erro",
                 "error": f"{type(last_exc).__name__}: {last_exc}",
             }
         finally:
             bar.close()
+
+    def _process_materials(self, platform, lesson, session, lesson_dir):
+        out = {"anexos": 0, "anexo_size": 0, "anexo_errors": 0, "anexo_links": 0}
+        try:
+            mats = platform.materials(lesson, session)
+        except Exception:
+            mats = []
+        anexos_dir = lesson_dir / "Anexos"
+        for item in mats:
+            try:
+                if item.get("kind") == "link":
+                    name = materials.sanitize_material_name(item.get("name") or "link") + ".url"
+                    materials.write_url_shortcut(anexos_dir / name, item["url"])
+                    out["anexo_links"] += 1
+                    continue
+                name = materials.sanitize_material_name(item.get("name"))
+                dest, exists = materials.unique_path(anexos_dir, name, item.get("size"))
+                if exists:
+                    continue
+                url, headers = platform.resolve_material_file(item, lesson, session)
+                if headers.get("token"):
+                    resp = session.get(
+                        url,
+                        headers={"token": headers["token"], "User-Agent": USER_AGENT},
+                        timeout=60,
+                    )
+                    resp.raise_for_status()
+                    url = resp.text.strip()
+                got = materials.download_file(
+                    session, url, dest, size=item.get("size"),
+                    extra_headers={"User-Agent": USER_AGENT} if headers else None,
+                )
+                out["anexos"] += 1
+                out["anexo_size"] += got
+                print_line(
+                    f"  [dim]anexo: {dest.name} ({estimate.format_bytes(got)})[/dim]"
+                )
+            except RateLimitedError as exc:
+                out["anexo_errors"] += 1
+                print_line(
+                    f"  [dim][yellow]anexo: {item.get('name', '?')} — {exc} (rate limit)[/yellow][/dim]"
+                )
+            except Exception as exc:
+                out["anexo_errors"] += 1
+                print_line(
+                    f"  [dim][red]anexo ERRO[/red] {item.get('name', '?')}: {exc}[/dim]"
+                )
+        return out
 
     @staticmethod
     def _shorten(text, limit=42):

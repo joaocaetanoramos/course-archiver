@@ -63,15 +63,16 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 - 💻 **Clean CLI** — rich-powered progress bars (no overlap), colored status lines, per-chapter headers.
 - 📊 **Size & duration estimates** — every `--ls` listing shows per-lesson size/duration plus per-chapter, per-course and grand totals; the download bar shows total size, speed, elapsed and ETA. Fully generic (probes the resolved stream: HLS bandwidth × `EXTINF` durations, or `Content-Range` for direct URLs), so it works for current and future platforms without changes. Best-effort — unknown values print `n/d` (e.g. YouTube).
 - 🐢 **Throttle-aware by default** — every request to the same host is paced (per-host minimum interval) and an HTTP `429` triggers a cooldown + one retry. If a host keeps answering `429` three times in a row, the probe stops and the remaining lessons of that course show `n/d` instead of the whole course disappearing; the next course starts fresh. So large listings just get slower instead of failing.
+- 📎 **Per-lesson attachments** — besides the video, downloads each lesson's supplementary files (PDFs, spreadsheets, audio…) into an `Anexos/` folder inside the chapter, with name+size dedup; complementary links (`complementaryReadings`) become `.url` shortcuts. Attachments are counted in `--ls` estimates (`+N anexo(s) · X`). Supported on Hotmart (`v1/pages/{hash}/complementary-content`) and Memberkit (best-effort scan of the lesson page); DRM-protected (lambda) files are resolved automatically.
 
 ## Supported platforms
 
 | Platform | Auto-discovery | Video download | Notes |
 |---|---|---|---|
 | **Astron Members** (`*.astronmembers.com`) | ✅ | ✅ Bunny / PandaVideo / Scaleup / YouTube | Full course + module + lesson discovery from the dashboard sidebar. |
-| **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + separate audio track merged automatically. Authenticates via `Authorization: Bearer <hmVlcIntegration>` cookie from `consumer.hotmart.com`. |
+| **Hotmart Club** (`*.hotmart.com`) | ✅ | ✅ HLS master m3u8 | AES-128 + separate audio track merged automatically. Authenticates via `Authorization: Bearer <hmVlcIntegration>` cookie from `consumer.hotmart.com`. Downloads attachments (`complementary-content`) into `Anexos/`. |
 | **Kiwify** (`*.kiwify.com`) | ✅ | ✅ HLS stream / direct download | May require a refresh token from localStorage. |
-| **Memberkit** (`*.memberkit.com.br`) | ✅ | ✅ HLS (Vimeo player) | Videos hosted on Vimeo with signed URLs; HLS resolved via the player config. Cookie of the domain only. |
+| **Memberkit** (`*.memberkit.com.br`) | ✅ | ✅ HLS (Vimeo player) | Videos hosted on Vimeo with signed URLs; HLS resolved via the player config. Cookie of the domain only. Attachments: best-effort scan of downloadable files on the lesson page. |
 | **Curseduca** (`*.curseduca.pro`) | ⚠️ detection only | — | Lesson listing pending. |
 | **Generic video URL** | — | ✅ via `yt-dlp` | Any m3u8 / mp4 / YouTube / Vimeo / Wistia link. |
 
@@ -159,7 +160,7 @@ The tool also accepts a raw `Cookie:` header string (e.g., copied from DevTools)
 
 > **Security:** the cookie file contains your session — treat it like a password. Do not share it. The `.gitignore` in this repo already excludes `cookie*.txt`.
 
-> **Hotmart:** the Club gateway does not authenticate with session cookies — it requires the `Authorization: Bearer <hmVlcIntegration>` header (value of the **hmVlcIntegration** cookie on `consumer.hotmart.com`). Export cookies logged in on that domain (DevTools → Application → Cookies). The value is URL-encoded; the tool decodes it automatically. Export manually and pass with `--cookies` — Chrome 127+ encrypts this cookie (App-Bound Encryption), so direct browser reads may return it empty.
+> **Hotmart:** the Club gateway does not authenticate with session cookies — it requires the `Authorization: Bearer <hmVlcIntegration>` header (value of the **hmVlcIntegration** cookie on `consumer.hotmart.com`). Export cookies logged in on that domain (DevTools → Application → Cookies). The value is URL-encoded; the tool uses it **raw** as exported (decoding it corrupts the token). Export manually and pass with `--cookies` — Chrome 127+ encrypts this cookie (App-Bound Encryption), so direct browser reads may return it empty.
 
 ## Usage
 
@@ -230,11 +231,17 @@ Files are organized by **group → course → lesson**:
 downloads/
 └── <Group Name>/
     └── <Course Name>/
-        ├── 01 - Aula 1.1 - Introduction.mp4
-        ├── 02 - Aula 1.2 - Concepts.mp4
-        ├── 03 - Trilha: SUMMARY (sem vídeo)        # skipped (Trilha/track dividers)
-        └── 04 - Aula 1.3 - Deep dive.mp4
+        └── 01 - Chapter 1/
+            ├── 01 - Aula 1.1 - Introduction.mp4
+            ├── 02 - Aula 1.2 - Concepts.mp4
+            ├── 03 - Trilha: SUMMARY (sem vídeo)      # skipped (Trilha/track dividers)
+            ├── 04 - Aula 1.3 - Deep dive.mp4
+            └── Anexos/                              # lessons' supplementary materials
+                ├── Lesson 1 handout.pdf            # each lesson's files
+                └── External material.url            # complementary links (.url shortcut)
 ```
+
+Each chapter's attachments are downloaded into `Anexos/` inside that chapter's folder; files with the same name+size are not re-downloaded on subsequent runs.
 
 Each `.mp4` has embedded metadata:
 
@@ -259,6 +266,7 @@ lib/
   streams.py         # Resolves a video-host embed URL → master m3u8 URL (Bunny / PandaVideo / Scaleup / Hotmart / YouTube)
   downloader.py      # The actual download: yt-dlp native HLS, `concurrent_fragment_downloads`, `-c copy` remux, metadata tags
   estimate.py        # Size/duration estimates: HLS (bandwidth × EXTINF) or direct (Content-Range) probe of the resolved stream
+  materials.py       # Attachment download: download_file (streamed .part), name+size dedup, .url shortcuts
   progress.py        # Rich-based progress bars (one per video, stacked, no overlap)
 ```
 
@@ -287,6 +295,7 @@ lib/
 | 4. Extract video embed URL per lesson (platform.extract_video)
 |    Astron: GET lesson page, regex data-streaming-video / data-original-url
 |    Hotm:   GET gateway v2/web/lessons/{hash} (Bearer) → medias[].url embed
+|    Anexos: platform.materials() (Hotm: v1/pages/{hash}/complementary-content) → processed at download time
 +----------+---------+
            |
            v
@@ -312,7 +321,8 @@ lib/
            |
            v
 +--------------------+
-| 7. Save to downloads/<group>/<course>/<NN> - <title>.mp4
+| 7. Save to downloads/<group>/<course>/<chapter>/<NN> - <title>.mp4
+|    and download attachments into <chapter>/Anexos/ (name+size dedup; links → .url)
 +--------------------+
 ```
 
@@ -392,7 +402,7 @@ The platform's sidebar may include section dividers ("Trilha: …", "Nota de atu
 
 ### Hotmart: empty auth error (401) right after a fresh export
 
-The gateway rejects requests when the `hmVlcIntegration` token is missing, expired, or was truncated during export. Re-export the cookies logged in on `consumer.hotmart.com` (not the course page domain) and pass them with `--cookies`. The tool reads the `hmVlcIntegration` cookie value and sends it as `Authorization: Bearer <value>` (URL-encoded → decoded automatically).
+The gateway rejects requests when the `hmVlcIntegration` token is missing, expired, or was truncated during export. Re-export the cookies logged in on `consumer.hotmart.com` (not the course page domain) and pass them with `--cookies`. The tool reads the `hmVlcIntegration` cookie value and sends it as `Authorization: Bearer <value>` (used raw, URL-encoded as exported — do not decode).
 
 ### ffmpeg not found
 
