@@ -82,11 +82,17 @@ def resolve_memberkit_vimeo(embed_url, session):
     if not m:
         raise RuntimeError(i18n.t("ui.stream_vimeo_config", url=embed_url))
     config_url = m.group(0).replace("\\u0026", "&").replace("&amp;", "&")
-    config = session.get(
+    resp = session.get(
         config_url,
         headers={**headers, "Referer": referer},
         timeout=30,
-    ).json()
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(i18n.t("ui.stream_vimeo_config_http", url=embed_url, code=resp.status_code))
+    try:
+        config = resp.json()
+    except ValueError:
+        raise RuntimeError(i18n.t("ui.stream_vimeo_bad_json", url=embed_url, n=len(resp.text)))
 
     hls = (config.get("files", {}) or {}).get("hls", {})
     cdns = hls.get("cdns", {})

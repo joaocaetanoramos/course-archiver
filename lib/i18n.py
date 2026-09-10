@@ -230,12 +230,20 @@ MESSAGES = {
         "ui.stream_scaleup": "Could not find hls-prefetch-url in Scaleup embed {url}",
         "ui.stream_hotmart": "Could not find master.m3u8 in Hotmart embed {url}",
         "ui.stream_vimeo_url": "Invalid Vimeo embed URL {url}",
-        "ui.stream_vimeo_config": "Could not find Vimeo player config in embed {url}",
+        "ui.stream_vimeo_config": (
+            "Could not find Vimeo player config in embed {url} — the lesson may be "
+            "removed or restricted (player page returned no config)."
+        ),
+        "ui.stream_vimeo_config_http": "Vimeo config request for {url} returned HTTP {code}.",
+        "ui.stream_vimeo_bad_json": (
+            "Vimeo config for {url} was not valid JSON (empty/HTML response, {n} bytes)."
+        ),
         "ui.stream_vimeo_hls": "Vimeo config has no HLS playlists in embed {url}",
 
         # lib/downloader.py
         "ui.dl_no_output": "yt-dlp did not produce an output file.",
         "ui.dl_ffmpeg_tags": "ffmpeg failed to write metadata: {err}",
+        "ui.dl_ffmpeg_timeout": "ffmpeg timed out after {seconds}s while writing metadata.",
 
         # lib/cookies.py
         "ui.cookies_invalid": (
@@ -356,12 +364,20 @@ MESSAGES = {
         "ui.stream_scaleup": "Não encontrei hls-prefetch-url no embed Scaleup {url}",
         "ui.stream_hotmart": "Não encontrei master.m3u8 no embed Hotmart {url}",
         "ui.stream_vimeo_url": "URL de embed Vimeo inválida {url}",
-        "ui.stream_vimeo_config": "Não encontrei config do player Vimeo no embed {url}",
+        "ui.stream_vimeo_config": (
+            "Não encontrei config do player Vimeo no embed {url} — a aula pode ter sido "
+            "removida ou estar restrita (a página do player não expôs a config)."
+        ),
+        "ui.stream_vimeo_config_http": "Requisição de config do Vimeo para {url} retornou HTTP {code}.",
+        "ui.stream_vimeo_bad_json": (
+            "A config do Vimeo para {url} não era JSON válido (resposta vazia/HTML, {n} bytes)."
+        ),
         "ui.stream_vimeo_hls": "Config Vimeo sem playlists HLS no embed {url}",
 
         # lib/downloader.py
         "ui.dl_no_output": "yt-dlp não produziu arquivo de saída.",
         "ui.dl_ffmpeg_tags": "ffmpeg falhou ao gravar metadados: {err}",
+        "ui.dl_ffmpeg_timeout": "ffmpeg estourou o tempo (>{seconds}s) ao gravar os metadados.",
 
         # lib/cookies.py
         "ui.cookies_invalid": (

@@ -5,7 +5,7 @@ import subprocess
 from lib import i18n
 
 
-def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fmt="bestvideo+bestaudio/best", concurrent=8, http_headers=None):
+def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fmt="bestvideo+bestaudio/best", concurrent=8, http_headers=None, keep_partial=False):
     import yt_dlp
 
     prefix = str(dest_mp4.with_suffix("")) + ".dl"
@@ -30,6 +30,7 @@ def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fm
         "fragment_retries": 10,
         "skip_unavailable_fragments": False,
         "keep_fragments": False,
+        "socket_timeout": 30,
     }
     if http_headers:
         opts["http_headers"] = http_headers
@@ -54,17 +55,24 @@ def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fm
 
         tag_with_ffmpeg(downloaded_path, tmp, metadata, ffmpeg)
         tmp.rename(dest_mp4)
-    finally:
-        for cand in glob.glob(prefix + ".*"):
-            try:
-                os.remove(cand)
-            except OSError:
-                pass
-        if tmp.exists():
-            try:
-                tmp.unlink()
-            except OSError:
-                pass
+        _cleanup(prefix, tmp)
+    except Exception:
+        if not keep_partial:
+            _cleanup(prefix, tmp)
+        raise
+
+
+def _cleanup(prefix, tmp):
+    for cand in glob.glob(prefix + ".*"):
+        try:
+            os.remove(cand)
+        except OSError:
+            pass
+    if tmp.exists():
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
 
 
 def tag_with_ffmpeg(src, tmp, metadata, ffmpeg):
@@ -78,7 +86,10 @@ def tag_with_ffmpeg(src, tmp, metadata, ffmpeg):
         "-metadata", f"comment={metadata['comment']}",
         str(tmp),
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(i18n.t("ui.dl_ffmpeg_timeout", seconds=900))
     if proc.returncode != 0:
         if tmp.exists():
             tmp.unlink()

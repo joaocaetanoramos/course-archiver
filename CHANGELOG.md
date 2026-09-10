@@ -4,6 +4,17 @@ All notable changes to **course-archiver** are documented here.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Downloads over unstable networks** — each retry now re-extracts the video and re-resolves the stream with a fresh URL/token, instead of retrying the same (already-expired) HLS URL that caused `ConnectionResetError` on long downloads.
+- **Console output races** — writes are serialized with a reentrant lock (a nested acquisition previously dead-locked the very first progress bar), and progress bars are `transient` so they no longer overwrite/erase chapter-summary lines while other threads print.
+- **Live errors that look like "config Vimeo"** — the Vimeo config endpoint now distinguishes HTTP failures and invalid JSON from a missing player config, with a message explaining the lesson may have been removed or restricted (HTTP 404 source).
+- **ffmpeg metadata step** — capped at 900 s with an explicit timeout error instead of hanging forever (which froze the chapter list while the UI showed chapters splitting).
+
+### Added
+- **Partial resume** — a failed download keeps its `.part`/`.dl` files (per-attempt, and after the final retry) so a re-run resumes instead of starting over; successful downloads still clean up.
+
 ## [2.2.0] — 2026-09-10
 
 ### Added

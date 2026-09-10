@@ -482,36 +482,12 @@ class App:
                 size = None
             return {**mat, "lesson": lesson, "status": "ja-baixado", "size": size}
 
-        embed = platform.extract_video(lesson, session)
-        if not embed:
-            return {**mat, "lesson": lesson, "status": "sem-video"}
-        stream = streams.resolve_stream(embed, session)
-        probe_size, _ = estimate.probe_stream(stream, session)
-
-        desc = self._shorten(lesson["title"])
-        bar = ProgressBar(total=probe_size, desc=desc)
-        stats = {"value": 0, "total": probe_size, "t0": time.monotonic()}
-
-        def on_progress(value, total):
-            if total and stats["total"] != total:
-                stats["total"] = total
-                bar.set_total(total)
-            stats["value"] = max(stats["value"], value)
-            bar.update_to(value)
-
         metadata = {
             "title": lesson["title"],
             "album": chapter,
             "artist": group,
             "comment": lesson["url"],
         }
-
-        def _do_download():
-            downloader.download_ytdlp(
-                stream["url"], dest_mp4, metadata, self.cookie_file, self.ffmpeg,
-                on_progress, stream.get("format", "bestvideo+bestaudio/best"), self.concurrent,
-                stream.get("http_headers"),
-            )
 
         def _is_connection_error(exc):
             msg = repr(exc) + str(exc)
@@ -522,66 +498,88 @@ class App:
                 or "timed out" in msg.lower()
             )
 
-        try:
-            lesson_dir.mkdir(parents=True, exist_ok=True)
-            last_exc = None
-            cookie_regenerated = False
-            for attempt in range(self.retries):
+        last_exc = None
+        lesson_dir.mkdir(parents=True, exist_ok=True)
+        cookie_regenerated = False
+        for attempt in range(self.retries):
+            bar = None
+            is_last = attempt + 1 >= self.retries
+            try:
+                embed = platform.extract_video(lesson, session)
+                if not embed:
+                    return {**mat, "lesson": lesson, "status": "sem-video"}
+                stream = streams.resolve_stream(embed, session)
+                probe_size, _ = estimate.probe_stream(stream, session)
+
+                desc = self._shorten(lesson["title"])
+                bar = ProgressBar(total=probe_size, desc=desc)
+                stats = {"value": 0, "total": probe_size, "t0": time.monotonic()}
+
+                def on_progress(value, total):
+                    if total and stats["total"] != total:
+                        stats["total"] = total
+                        bar.set_total(total)
+                    stats["value"] = max(stats["value"], value)
+                    bar.update_to(value)
+
+                downloader.download_ytdlp(
+                    stream["url"], dest_mp4, metadata, self.cookie_file, self.ffmpeg,
+                    on_progress, stream.get("format", "bestvideo+bestaudio/best"), self.concurrent,
+                    stream.get("http_headers"), keep_partial=True,
+                )
                 try:
-                    _do_download()
-                    try:
-                        size = dest_mp4.stat().st_size
-                    except OSError:
-                        size = stats["value"] or stats["total"]
-                    return {
-                        **mat,
-                        "lesson": lesson,
-                        "status": "baixado",
-                        "size": size,
-                        "elapsed": time.monotonic() - stats["t0"],
-                    }
-                except Exception as exc:
-                    err = str(exc)
-                    last_exc = exc
-                    is_conn = _is_connection_error(exc)
-                    is_cookie = "Netscape format" in err
+                    size = dest_mp4.stat().st_size
+                except OSError:
+                    size = stats["value"] or stats["total"]
+                return {
+                    **mat,
+                    "lesson": lesson,
+                    "status": "baixado",
+                    "size": size,
+                    "elapsed": time.monotonic() - stats["t0"],
+                }
+            except Exception as exc:
+                err = str(exc)
+                last_exc = exc
+                is_conn = _is_connection_error(exc)
+                is_cookie = "Netscape format" in err
 
-                    if is_cookie and self.cookie_jar is not None and not cookie_regenerated:
-                        old_cookie = self.cookie_file
-                        if old_cookie:
-                            try:
-                                os.unlink(old_cookie)
-                            except OSError:
-                                pass
-                        self.cookie_file = write_netscape_cookie_file(self.cookie_jar, self.host)
-                        cookie_regenerated = True
-                        continue
+                if is_cookie and self.cookie_jar is not None and not cookie_regenerated:
+                    old_cookie = self.cookie_file
+                    if old_cookie:
+                        try:
+                            os.unlink(old_cookie)
+                        except OSError:
+                            pass
+                    self.cookie_file = write_netscape_cookie_file(self.cookie_jar, self.host)
+                    cookie_regenerated = True
+                    continue
 
-                    if is_conn:
-                        self._throttle_down()
+                if is_conn:
+                    self._throttle_down()
 
-                    is_last = attempt + 1 >= self.retries
-                    if is_last:
-                        break
+                if is_last:
+                    break
 
-                    backoff = min(30.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1.0)
-                    print_line(i18n.t(
-                        "ui.network_retry",
-                        attempt=attempt + 1,
-                        retries=self.retries,
-                        errtype=type(exc).__name__,
-                        backoff=backoff,
-                    ))
-                    time.sleep(backoff)
+                backoff = min(30.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1.0)
+                print_line(i18n.t(
+                    "ui.network_retry",
+                    attempt=attempt + 1,
+                    retries=self.retries,
+                    errtype=type(exc).__name__,
+                    backoff=backoff,
+                ))
+                time.sleep(backoff)
+            finally:
+                if bar is not None:
+                    bar.close()
 
-            return {
-                **mat,
-                "lesson": lesson,
-                "status": "erro",
-                "error": f"{type(last_exc).__name__}: {last_exc}",
-            }
-        finally:
-            bar.close()
+        return {
+            **mat,
+            "lesson": lesson,
+            "status": "erro",
+            "error": f"{type(last_exc).__name__}: {last_exc}",
+        }
 
     def _process_materials(self, platform, lesson, session, lesson_dir):
         out = {"anexos": 0, "anexo_size": 0, "anexo_errors": 0, "anexo_links": 0}
