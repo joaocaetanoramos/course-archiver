@@ -61,4 +61,7 @@ Baseline commit `2bfb9d8` ("Initial commit: course-archiver v2"). Since then:
 - Cookie file auto-regenerated on "Netscape format" error.
 - Docs split into English (default) + Portuguese with expanded content and module map.
 
+[2.2.1]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.2.1
+[2.2.0]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.2.0
 [2.1.0]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.1.0
+[2.0.0]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.0.0
