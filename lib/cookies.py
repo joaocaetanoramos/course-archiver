@@ -6,6 +6,8 @@ from pathlib import Path
 
 import requests
 
+from lib import i18n
+
 
 class TolerantSession(requests.Session):
     def get_redirect_target(self, resp):
@@ -107,8 +109,5 @@ def validate_cookie_file(path):
         jar.load()
         return len(jar)
     except Exception as exc:
-        raise SystemExit(
-            f"Arquivo de cookies inválido para o yt-dlp: {path}\n"
-            f"Erro: {exc}\n"
-            f"Primeira linha: {Path(path).read_text(errors='replace').splitlines()[:1]!r}"
-        )
+        first = Path(path).read_text(errors="replace").splitlines()[:1]
+        raise SystemExit(i18n.t("ui.cookies_invalid", path=path, error=exc, first=repr(first)))

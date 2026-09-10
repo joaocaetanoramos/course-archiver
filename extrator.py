@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlparse
 
-from lib import downloader, estimate, materials, streams
+from lib import downloader, estimate, i18n, materials, streams
 from lib.cookies import TolerantSession, load_cookies, validate_cookie_file, write_netscape_cookie_file
 from lib.platforms import AuthError, RateLimitedError, detect_platform
 from lib.progress import ProgressBar, listing_progress, print_line
@@ -99,7 +99,7 @@ class App:
                     self.pacer.wait(host)
                     resp = method(url, *args, **kwargs)
                     if getattr(resp, "status_code", None) == 429:
-                        exc = RateLimitedError(f"HTTP 429 em {url} (após cooldown)")
+                        exc = RateLimitedError(i18n.t("ui.rate_after_cooldown", url=url))
                         exc.host = host
                         raise exc
                 return resp
@@ -121,11 +121,11 @@ class App:
             lessons = platform.list_lessons(course, self.session())
         except RateLimitedError as exc:
             title = course.get("title") or course.get("id") or "?"
-            print_line(f"  [yellow]Erro ao listar aulas de {title}:[/yellow] {exc} (rate limit)")
+            print_line(i18n.t("ui.list_lessons_rate_err", title=title, exc=str(exc)))
             return None
         except Exception as exc:
             title = course.get("title") or course.get("id") or "?"
-            print_line(f"  [red]Erro ao listar aulas de {title}:[/red] {exc}")
+            print_line(i18n.t("ui.list_lessons_err", title=title, exc=str(exc)))
             return None
         return [
             (idx, lesson)
@@ -210,13 +210,13 @@ class App:
 
         title = self._shorten(course.get("title") or course.get("id") or "?", 40)
         host = urlparse(course.get("url") or course.get("id") or "").netloc
-        base_desc = f"Listando {title}…"
+        base_desc = i18n.t("ui.listing_desc", title=title)
 
         with listing_progress(len(lessons), base_desc) as (update, set_desc, _progress, _task_id):
             for done in do_probe():
                 update(done)
                 if self.pacer.throttled(host):
-                    set_desc(base_desc + " [yellow](rate limit…)[/yellow]")
+                    set_desc(base_desc + " " + i18n.t("ui.rate_limit_hint_markup"))
                 else:
                     set_desc(base_desc)
         return est_by_idx
@@ -232,7 +232,7 @@ class App:
             parts.append(s)
         anexos = []
         if n_files:
-            anexos.append(f"{n_files} anexo(s)")
+            anexos.append(i18n.nt("ui.attach_count", n_files))
         fs = estimate.format_bytes(fbytes)
         if fbytes and fs != "n/d":
             anexos.append(fs)
@@ -257,7 +257,7 @@ class App:
 
     @staticmethod
     def _totals_str(n, size, duration, files=0, fbytes=0):
-        parts = [f"{n} aula(s)"]
+        parts = [i18n.nt("ui.lesson_count", n)]
         s = estimate.format_bytes(size)
         if s != "n/d":
             parts.append(s)
@@ -265,7 +265,7 @@ class App:
         if d:
             parts.append(d)
         if files:
-            anexos = f"+{files} anexo(s)"
+            anexos = "+" + i18n.nt("ui.attach_count", files)
             fs = estimate.format_bytes(fbytes)
             if fbytes and fs != "n/d":
                 anexos += f" · {fs}"
@@ -325,11 +325,11 @@ class App:
             grand_courses += 1
 
         print_line()
-        print_line(
-            f"[bold underline]Total:[/bold underline] "
-            f"{self._totals_str(grand_lessons, grand_size, grand_dur, grand_files, grand_fbytes)} "
-            f"em {grand_courses} curso(s)."
-        )
+        print_line(i18n.t(
+            "ui.grand_total",
+            totals=self._totals_str(grand_lessons, grand_size, grand_dur, grand_files, grand_fbytes),
+            courses=i18n.nt("ui.course_count", grand_courses),
+        ))
 
     def run(self):
         try:
@@ -337,16 +337,17 @@ class App:
                 platform = detect_platform(self.url)
                 courses = platform.discover(self.url, self.session())
             except AuthError as exc:
-                print_line(f"[red]Erro de autenticação:[/red] {exc}")
-                print_line(
-                    "[yellow]Seu cookie pode ter expirado ou não ter permissão para esta URL. "
-                    "Reexporte o cookie do navegador logado na plataforma.[/yellow]"
-                )
+                print_line(i18n.t("ui.auth_error") + f" {exc}")
+                print_line(i18n.t("ui.cookie_expired_hint"))
                 return
             except Exception as exc:
-                print_line(f"[red]Erro ao descobrir cursos:[/red] {exc}")
+                print_line(i18n.t("ui.discover_error") + f" {exc}")
                 return
-            print_line(f"Plataforma: [bold]{platform.name}[/bold] | {len(courses)} curso(s).")
+            print_line(i18n.t(
+                "ui.platform_line",
+                platform=platform.name,
+                count=i18n.nt("ui.course_count", len(courses)),
+            ))
 
             if self.ls:
                 self._list(platform, courses)
@@ -359,12 +360,16 @@ class App:
 
                 chapter = (lessons[0][1].get("chapter") or course.get("title") or course.get("id")) if lessons else (course.get("title") or course.get("id"))
                 print_line()
-                print_line(f"[bold underline]== {chapter}[/bold underline]  [dim]({len(lessons)} aula(s))[/dim]")
+                print_line(i18n.t(
+                    "ui.chapter_header",
+                    chapter=chapter,
+                    count=i18n.nt("ui.lesson_count", len(lessons)),
+                ))
                 try:
                     self._process_chapter(platform, course, lessons)
                 except Exception as exc:
                     title = course.get("title") or course.get("id") or "?"
-                    print_line(f"  [red]Erro ao processar {title}:[/red] {exc}")
+                    print_line(i18n.t("ui.process_error", title=title) + f" {exc}")
         finally:
             if self.cookie_file:
                 try:
@@ -388,16 +393,16 @@ class App:
             if status in ("baixado", "ja-baixado"):
                 suffix = f"  [dim]({estimate.format_bytes(res.get('size'))})[/dim]" if res.get("size") else ""
                 if res.get("anexos"):
-                    ax = f" +{res['anexos']} anexo(s)"
+                    ax = " +" + i18n.nt("ui.attach_count", res["anexos"])
                     bs = estimate.format_bytes(res.get("anexo_size"))
                     if bs != "n/d" and res.get("anexo_size"):
                         ax += f" · {bs}"
                     suffix += f" [dim]{ax}[/dim]"
                 print_line(f"[green]{k}/{total}[/green] [bold]{title}[/bold]{suffix}")
             elif status == "sem-video":
-                print_line(f"[dim]{k}/{total} — {title} (sem vídeo)[/dim]")
+                print_line(f"[dim]{k}/{total} — {title} ({i18n.t('ui.no_video_tag')})[/dim]")
             else:
-                print_line(f"[red]{k}/{total} ERRO[/red] {title}: {res.get('error')}")
+                print_line(f"[red]{k}/{total} {i18n.t('ui.error_tag')}[/red] {title}: {res.get('error')}")
             results.append(res)
 
         if self.parallel == 1:
@@ -424,17 +429,24 @@ class App:
         anexos = sum(r.get("anexos") or 0 for r in results)
         anexo_bytes = sum(r.get("anexo_size") or 0 for r in results)
         anexo_errs = sum(r.get("anexo_errors") or 0 for r in results)
-        summary = f"  → {ok} baixado(s), {skipped} sem vídeo, {errs} erro(s)"
+        summary = i18n.t(
+            "ui.chapter_summary",
+            ok=i18n.nt("ui.downloaded", ok),
+            no_video=i18n.nt("ui.no_video", skipped),
+            errs=i18n.nt("ui.err", errs),
+        )
         if totale:
             summary += f" · {estimate.format_bytes(totale)}"
         if anexos:
-            ax = f" + {anexos} anexo(s)"
+            ax = " + " + i18n.nt("ui.attach_count", anexos)
             bs = estimate.format_bytes(anexo_bytes)
             if anexo_bytes:
                 ax += f" · {bs}"
             summary += ax
         if anexo_errs:
-            summary += f" ({anexo_errs} anexo(s) com erro)"
+            summary += " " + i18n.t(
+                "ui.attachments_with_error", n=i18n.nt("ui.attach_count", anexo_errs)
+            )
         summary += "."
         print_line(summary)
 
@@ -442,10 +454,9 @@ class App:
         with self._concurrent_lock:
             if self.concurrent > 1:
                 new_val = max(1, self.concurrent // 2)
-                print_line(
-                    f"  [yellow]Conexão instável — reduzindo segmentos por vídeo de "
-                    f"{self.concurrent} para {new_val}.[/yellow]"
-                )
+                print_line(i18n.t(
+                    "ui.throttle_down", old=self.concurrent, new_val=new_val
+                ))
                 self.concurrent = new_val
 
     def _process_lesson(self, platform, course, lesson, idx):
@@ -554,10 +565,13 @@ class App:
                         break
 
                     backoff = min(30.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1.0)
-                    print_line(
-                        f"  [yellow]Erro de rede ({attempt + 1}/{self.retries}): "
-                        f"{type(exc).__name__} — retentando em {backoff:.1f}s[/yellow]"
-                    )
+                    print_line(i18n.t(
+                        "ui.network_retry",
+                        attempt=attempt + 1,
+                        retries=self.retries,
+                        errtype=type(exc).__name__,
+                        backoff=backoff,
+                    ))
                     time.sleep(backoff)
 
             return {
@@ -602,19 +616,19 @@ class App:
                 )
                 out["anexos"] += 1
                 out["anexo_size"] += got
-                print_line(
-                    f"  [dim]anexo: {dest.name} ({estimate.format_bytes(got)})[/dim]"
-                )
+                print_line(i18n.t(
+                    "ui.anexo_line", name=dest.name, size=estimate.format_bytes(got)
+                ))
             except RateLimitedError as exc:
                 out["anexo_errors"] += 1
-                print_line(
-                    f"  [dim][yellow]anexo: {item.get('name', '?')} — {exc} (rate limit)[/yellow][/dim]"
-                )
+                print_line(i18n.t(
+                    "ui.anexo_rate_err", name=item.get("name", "?"), exc=str(exc)
+                ))
             except Exception as exc:
                 out["anexo_errors"] += 1
-                print_line(
-                    f"  [dim][red]anexo ERRO[/red] {item.get('name', '?')}: {exc}[/dim]"
-                )
+                print_line(i18n.t(
+                    "ui.anexo_err", name=item.get("name", "?"), exc=str(exc)
+                ))
         return out
 
     @staticmethod
@@ -624,24 +638,26 @@ class App:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Extrai vídeos de cursos para assistir offline.")
-    parser.add_argument("url", help="URL do dashboard, do curso ou de um vídeo")
-    parser.add_argument("--cookies", help="Arquivo de cookies (Netscape/JSON) ou string 'Cookie:' crua (obrigatório)")
-    parser.add_argument("--output", default="./downloads", help="Diretório de saída")
-    parser.add_argument("--parallel", type=int, default=1, help="Número de downloads em paralelo")
-    parser.add_argument("--concurrent", type=int, default=8, help="Segmentos baixados em paralelo por vídeo")
-    parser.add_argument("--retries", type=int, default=3, help="Tentativas por aula em caso de erro de rede transitório")
+    i18n.init()
+    parser = argparse.ArgumentParser(description=i18n.t("cli.description"))
+    parser.add_argument("url", help=i18n.t("cli.url_help"))
+    parser.add_argument("--cookies", help=i18n.t("cli.cookies_help"))
+    parser.add_argument("--output", default="./downloads", help=i18n.t("cli.output_help"))
+    parser.add_argument("--parallel", type=int, default=1, help=i18n.t("cli.parallel_help"))
+    parser.add_argument("--concurrent", type=int, default=8, help=i18n.t("cli.concurrent_help"))
+    parser.add_argument("--retries", type=int, default=3, help=i18n.t("cli.retries_help"))
     parser.add_argument("--ls", nargs="?", const="lessons", choices=App.LS_LEVELS,
-                        help="Lista sem baixar. Níveis: courses, chapters, lessons. "
-                             "Sem valor lista tudo (courses + chapters + lessons). "
-                             "Ex.: --ls courses / --ls")
-    parser.add_argument("--ffmpeg", help="Caminho do executável ffmpeg (opcional)")
-    parser.add_argument("--course", help="Filtra por slug ou id de curso (separado por vírgula)")
-    parser.add_argument("--lesson", help="Filtra por id de aula (separado por vírgula)")
+                        help=i18n.t("cli.ls_help"))
+    parser.add_argument("--lang", default="auto", choices=["auto", *i18n.LANGUAGES],
+                        help=i18n.t("cli.lang_help"))
+    parser.add_argument("--ffmpeg", help=i18n.t("cli.ffmpeg_help"))
+    parser.add_argument("--course", help=i18n.t("cli.course_help"))
+    parser.add_argument("--lesson", help=i18n.t("cli.lesson_help"))
 
     args = parser.parse_args()
+    i18n.init(args.lang)
     if not args.cookies:
-        parser.error("informe --cookies arquivo.txt")
+        parser.error(i18n.t("cli.cookies_required"))
 
     ls = args.ls
 

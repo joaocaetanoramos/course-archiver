@@ -2,6 +2,8 @@ import glob
 import os
 import subprocess
 
+from lib import i18n
+
 
 def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fmt="bestvideo+bestaudio/best", concurrent=8, http_headers=None):
     import yt_dlp
@@ -47,7 +49,7 @@ def download_ytdlp(url, dest_mp4, metadata, cookie_file, ffmpeg, on_progress, fm
         if not downloaded_path:
             candidates = glob.glob(prefix + ".*")
             if not candidates:
-                raise RuntimeError("yt-dlp não produziu arquivo de saída.")
+                raise RuntimeError(i18n.t("ui.dl_no_output"))
             downloaded_path = candidates[0]
 
         tag_with_ffmpeg(downloaded_path, tmp, metadata, ffmpeg)
@@ -80,4 +82,4 @@ def tag_with_ffmpeg(src, tmp, metadata, ffmpeg):
     if proc.returncode != 0:
         if tmp.exists():
             tmp.unlink()
-        raise RuntimeError(f"ffmpeg falhou ao gravar metadados: {proc.stderr.strip()[:500]}")
+        raise RuntimeError(i18n.t("ui.dl_ffmpeg_tags", err=proc.stderr.strip()[:500]))

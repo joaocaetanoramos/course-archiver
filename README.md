@@ -201,6 +201,7 @@ course-archiver --cookies cookie.txt "<URL>" --ls
 | `--ls` `LEVEL` | List without downloading: `courses` \| `chapters` \| `lessons`. No value lists everything (same as `lessons`). Shows size + duration per lesson and totals per chapter/course/all courses | — |
 | `--course` `IDS` | Filter by course slug or id (comma-separated) | — |
 | `--lesson` `IDS` | Filter by lesson id (comma-separated) | — |
+| `--lang` `CODE` | UI language: `auto` \| `en` \| `pt`. `auto` uses the system locale (`LC_ALL` / `LC_MESSAGES` / `LANG`); unknown/other locales fall back to English | `auto` |
 | `--ffmpeg` `PATH` | Path to ffmpeg executable | auto-detect |
 
 ### Examples
@@ -223,7 +224,21 @@ course-archiver --cookies cookie.txt "<URL>" --course my-course-slug
 
 # Filter to specific lessons
 course-archiver --cookies cookie.txt "<COURSE_URL>" --lesson 123,456,789
+
+# Force the UI language (English here, even if the system is in Portuguese)
+course-archiver --cookies cookie.txt "<URL>" --lang en
 ```
+
+### Language
+
+The UI detects your system language and follows it automatically:
+
+1. `--lang <code>` — explicit override (highest priority).
+2. `LC_ALL` / `LC_MESSAGES` / `LANG` environment variables (e.g. `pt_BR.UTF-8` → Portuguese, `de_DE.UTF-8` → English fallback).
+3. `locale.getlocale()` — as last resort.
+4. Unknown or unset locale → **English** (the default).
+
+Supported languages today: **English** (default) and **Portuguese**. Messages are centralized in `lib/i18n.py` — to add a language, add a dictionary to `MESSAGES`, an entry to `LANGUAGES`, and its plural-form count to `PLURAL_FORM_COUNT`. Untranslated keys gracefully fall back to English. Structural names that are part of the output layout (e.g. the `Anexos/` folder) stay fixed.
 
 ## Output structure
 

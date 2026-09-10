@@ -201,6 +201,7 @@ course-archiver --cookies cookie.txt "<URL>" --ls
 | `--ls` `NIVEL` | Lista sem baixar: `courses` \| `chapters` \| `lessons`. Sem valor lista tudo (equivale a `lessons`). Mostra tamanho + duração por aula e totais por capítulo/curso/todos os cursos | — |
 | `--course` `IDS` | Filtra por slug ou id de curso (separado por vírgula) | — |
 | `--lesson` `IDS` | Filtra por id de aula (separado por vírgula) | — |
+| `--lang` `CÓDIGO` | Idioma da interface: `auto` \| `en` \| `pt`. `auto` usa o idioma do sistema (`LC_ALL` / `LC_MESSAGES` / `LANG`); locales desconhecidos/outros caem no inglês | `auto` |
 | `--ffmpeg` `CAMINHO` | Caminho do executável ffmpeg | auto-detecta |
 
 ### Exemplos
@@ -223,7 +224,21 @@ course-archiver --cookies cookie.txt "<URL>" --course meu-slug-de-curso
 
 # Filtrar por aulas específicas
 course-archiver --cookies cookie.txt "<URL_DO_CURSO>" --lesson 123,456,789
+
+# Forçar o idioma da interface (inglês, mesmo se o sistema estiver em português)
+course-archiver --cookies cookie.txt "<URL>" --lang en
 ```
+
+### Idioma
+
+A interface detecta o idioma do sistema e o segue automaticamente:
+
+1. `--lang <código>` — override explícito (prioridade máxima).
+2. Variáveis `LC_ALL` / `LC_MESSAGES` / `LANG` (ex.: `pt_BR.UTF-8` → português, `de_DE.UTF-8` → cai no inglês).
+3. `locale.getlocale()` — como último recurso.
+4. Locale desconhecido ou ausente → **inglês** (o padrão).
+
+Idiomas suportados hoje: **inglês** (padrão) e **português**. As mensagens ficam centralizadas em `lib/i18n.py` — para adicionar um idioma, adicione um dicionário em `MESSAGES`, uma entrada em `LANGUAGES` e a contagem de formas plurais em `PLURAL_FORM_COUNT`. Chaves sem tradução caem com segurança no inglês. Nomes estruturais que fazem parte do layout de saída (ex.: a pasta `Anexos/`) permanecem fixos.
 
 ## Estrutura de saída
 

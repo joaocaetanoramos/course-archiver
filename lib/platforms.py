@@ -3,6 +3,8 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from lib import i18n
+
 
 class AuthError(Exception):
     """Raised when the platform returns 401/403 — usually an expired cookie."""
@@ -19,27 +21,17 @@ def get_json(session, url, headers=None, timeout=20):
 
     if resp.status_code in (401, 403):
         if not body.strip():
-            raise AuthError(
-                f"HTTP {resp.status_code} (resposta vazia) em {url}. "
-                "A API rejeitou a autenticação.\n"
-                "Para Hotmart: o gateway exige o header 'Authorization: Bearer <hmVlcIntegration>'. "
-                "Exporte o cookie hmVlcIntegration logado em consumer.hotmart.com "
-                "(F12 > Application > Cookies) e use --cookies com ele.\n"
-                "Para outras plataformas: reexporte os cookies do navegador logado."
-            )
+            raise AuthError(i18n.t("ui.auth_http_empty", code=resp.status_code, url=url))
         if "text/html" in content_type and ("login" in body.lower()[:3000]
                                             or "cloudflare" in body.lower()[:3000]):
-            raise AuthError(
-                f"HTTP {resp.status_code} — resposta HTML de login em {url}. "
-                "A sessão expirou. Faça login no navegador e reexporte os cookies."
-            )
-        raise AuthError(f"HTTP {resp.status_code} (autenticação) em {url}")
+            raise AuthError(i18n.t("ui.auth_html_login", code=resp.status_code, url=url))
+        raise AuthError(i18n.t("ui.auth_http", code=resp.status_code, url=url))
 
     if resp.status_code == 429:
-        raise RateLimitedError(f"HTTP 429 (rate limit) em {url}")
+        raise RateLimitedError(i18n.t("ui.rate_limited", url=url))
 
     if resp.status_code != 200:
-        raise RuntimeError(f"HTTP {resp.status_code} em {url}: {body[:200]}")
+        raise RuntimeError(i18n.t("ui.http_error", code=resp.status_code, url=url, body=body[:200]))
     return resp.json()
 
 
@@ -72,7 +64,7 @@ class GenericPlatform(Platform):
         return [{"platform": self.name, "id": url, "title": "", "group": "", "url": url}]
 
     def list_lessons(self, course, session):
-        name = urlparse(course["url"]).path.rstrip("/").rsplit("/", 1)[-1] or "Vídeo"
+        name = urlparse(course["url"]).path.rstrip("/").rsplit("/", 1)[-1] or i18n.t("ui.video_label")
         return [{"id": course["url"], "title": name, "url": course["url"], "group": "", "chapter": ""}]
 
     def extract_video(self, lesson, session):
@@ -93,7 +85,7 @@ class AstronPlatform(Platform):
         base = self._base(url)
         html = session.get(base + "/dashboard", timeout=20).text
         if "IS_LOGGED_IN = true" not in html:
-            raise SystemExit("Sessão não autenticada. Verifique o cookie.")
+            raise SystemExit(i18n.t("ui.astron_not_auth"))
         soup = BeautifulSoup(html, "html.parser")
 
         courses = []
@@ -192,15 +184,7 @@ class HotmartPlatform(Platform):
     def _bearer(self, session):
         token = session.cookies.get("hmVlcIntegration")
         if not token:
-            raise AuthError(
-                "Hotmart: cookie 'hmVlcIntegration' não encontrado nos cookies carregados.\n"
-                "O gateway do Hotmart autentica via 'Authorization: Bearer <hmVlcIntegration>' "
-                "(não via cookies de sessão).\n"
-                "Exporte o cookie hmVlcIntegration logado em consumer.hotmart.com "
-                "(F12 > Application > Cookies > https://consumer.hotmart.com) e use --cookies.\n"
-                "Exporte manualmente: o Chrome 127+ criptografa esse cookie "
-                "(App-Bound Encryption) e a leitura direta do navegador pode retorná-lo vazio."
-            )
+            raise AuthError(i18n.t("ui.hotmart_no_token"))
         return token
 
     def _headers(self, session, slug, product_id):
@@ -229,7 +213,7 @@ class HotmartPlatform(Platform):
     def discover(self, url, session):
         slug, product_id, content_hash = self._parse_url(url)
         if not slug or not product_id:
-            raise SystemExit("URL Hotmart inválida. Informe a URL do produto: .../club/{slug}/products/{id}")
+            raise SystemExit(i18n.t("ui.hotmart_bad_url"))
         headers = self._headers(session, slug, product_id)
         data = get_json(session, f"{self.GATEWAY}/v2/product/basic", headers=headers)
         name = data.get("name") or slug
@@ -346,10 +330,7 @@ class KiwifyPlatform(Platform):
     def _headers(self, session):
         token = self._token(session)
         if not token:
-            raise SystemExit(
-                "Kiwify: token de autenticação não encontrado. Exporte o id_token/access_token "
-                "(localStorage) ou use a extensão do Chrome."
-            )
+            raise SystemExit(i18n.t("ui.kiwify_no_token"))
         return {
             "Authorization": f"Bearer {token}",
             "accept": "application/json",
@@ -423,10 +404,7 @@ class CurseducaPlatform(Platform):
         return "curseduca.pro" in host or "curseduca.com" in host
 
     def discover(self, url, session):
-        raise SystemExit(
-            "Curseduca ainda não totalmente suportado: a descoberta de aulas depende da API "
-            "clas.curseduca.pro (menus/current + contents/{id}). Implementação pendente."
-        )
+        raise SystemExit(i18n.t("ui.curseduca_unsupported"))
 
     def list_lessons(self, course, session):
         raise NotImplementedError
@@ -453,16 +431,11 @@ class MemberkitPlatform(Platform):
     def _get(self, session, url):
         resp = session.get(url, headers={"user-agent": self.USER_AGENT}, timeout=30)
         if resp.status_code == 429:
-            raise RateLimitedError(
-                f"HTTP 429 em {url}. Muitas requisições — o servidor pediu para reduzir o ritmo."
-            )
+            raise RateLimitedError(i18n.t("ui.memberkit_rate", url=url))
         if resp.status_code in (401, 403):
-            raise AuthError(
-                f"HTTP {resp.status_code} em {url}. Sessão do Memberkit expirada — "
-                "faça login no navegador e reexporte os cookies."
-            )
+            raise AuthError(i18n.t("ui.memberkit_auth", code=resp.status_code, url=url))
         if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code} em {url}")
+            raise RuntimeError(i18n.t("ui.http_status", code=resp.status_code, url=url))
         return resp.text
 
     def discover(self, url, session):

@@ -2,6 +2,8 @@ import re
 import threading
 from urllib.parse import urljoin
 
+from lib import i18n
+
 
 _EXTINF_RE = re.compile(r"#EXTINF:\s*([0-9]+(?:\.[0-9]+)?)")
 _STREAM_INF_RE = re.compile(r"#EXT-X-STREAM-INF:[^\n]*BANDWIDTH=(\d+)")
@@ -20,7 +22,7 @@ def format_bytes(n):
         if n < 1024 or unit == units[-1]:
             if unit == "B":
                 return f"{int(n)} {unit}"
-            return f"{n:.1f}".replace(".", ",") + f" {unit}"
+            return f"{n:.1f}".replace(".", i18n.decimal_sep()) + f" {unit}"
         n /= 1024
 
 
