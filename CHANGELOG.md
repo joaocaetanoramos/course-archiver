@@ -4,7 +4,7 @@ All notable changes to **course-archiver** are documented here.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/); versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.1.0] — 2026-09-10
 
 ### Added
 - **Per-lesson attachments** — downloads each lesson's supplementary files into an `Anexos/` folder inside the chapter, with name+size dedup; complementary links become `.url` shortcuts.
@@ -32,4 +32,4 @@ Baseline commit `2bfb9d8` ("Initial commit: course-archiver v2"). Since then:
 - Cookie file auto-regenerated on "Netscape format" error.
 - Docs split into English (default) + Portuguese with expanded content and module map.
 
-[Unreleased]: https://github.com/joaocaetanoramos/course-archiver/compare/main...HEAD
+[2.1.0]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.1.0
