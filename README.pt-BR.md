@@ -80,12 +80,10 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 
 ## Instalação
 
-### Recomendado: instalar como CLI (rode `course-archiver` de qualquer lugar)
+### Recomendado: instalar via PyPI
 
 ```bash
-git clone https://github.com/joaocaetanoramos/course-archiver.git
-cd course-archiver
-pip install .
+pip install course-archiver
 ```
 
 Isso instala o comando `course-archiver` no seu `PATH` (geralmente `~/.local/bin`), então você pode rodar de qualquer pasta:
@@ -94,37 +92,26 @@ Isso instala o comando `course-archiver` no seu `PATH` (geralmente `~/.local/bin
 course-archiver --cookies /caminho/cookie.txt "<URL_DO_CURSO>"
 ```
 
-As dependências (pacotes Python + `ffmpeg`) são instaladas automaticamente.
+As dependências (pacotes Python) são instaladas automaticamente. Veja [Requisitos](#requisitos) para o `ffmpeg`.
 
-### Alternativa: rodar direto da fonte sem instalar
+### Alternativa: instalar a partir da fonte (para desenvolvimento)
 
 ```bash
 git clone https://github.com/joaocaetanoramos/course-archiver.git
 cd course-archiver
-pip install -r requirements.txt
-python extrator.py --cookies cookie.txt "<URL_DO_CURSO>"
+pip install -e .
 ```
 
 ### Requisitos
 
 - **Python 3.10+**
 - **ffmpeg** (`sudo dnf install ffmpeg` / `brew install ffmpeg` / `apt install ffmpeg` / `pip install static-ffmpeg`)
-- **pycryptodomex** (instalado automaticamente via `pip install .` ou `pip install -r requirements.txt`) — usado para descriptografia nativa de HLS AES-128.
+- **pycryptodomex** (instalado automaticamente via `pip install course-archiver` ou `pip install -e .`) — usado para descriptografia nativa de HLS AES-128.
 
 ### Atualizando
 
-Se você instalou via `pip install .` a partir de um clone local do repo:
-
 ```bash
-cd /caminho/para/course-archiver
-git pull
-pip install --upgrade .
-```
-
-Se você instalou direto do GitHub (sem clone):
-
-```bash
-pip install --upgrade --force-reinstall "git+https://github.com/joaocaetanoramos/course-archiver.git"
+pip install --upgrade course-archiver
 ```
 
 Para verificar a versão instalada:
@@ -133,16 +120,7 @@ Para verificar a versão instalada:
 pip show course-archiver
 ```
 
-Se você roda direto da fonte sem instalar:
-
-```bash
-cd /caminho/para/course-archiver
-git pull
-```
-
-(Rode `pip install -r requirements.txt` novamente só se as dependências mudarem.)
-
-Cada versão é publicada como uma **GitHub Release** (com tag `vX.Y.Z`) — veja [CHANGELOG.md](CHANGELOG.md) para o que mudou em cada versão.
+Cada versão é publicada como uma **GitHub Release** (com tag `vX.Y.Z`) e no **[PyPI](https://pypi.org/project/course-archiver/)** — veja [CHANGELOG.md](CHANGELOG.md) para o que mudou em cada versão.
 
 ## Como obter o cookie
 

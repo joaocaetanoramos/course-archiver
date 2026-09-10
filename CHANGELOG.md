@@ -6,6 +6,11 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/); vers
 
 ## [Unreleased]
 
+## [2.2.2] — 2026-09-10
+
+### Changed
+- **Installation docs** — primary install method is now `pip install course-archiver` from PyPI; `git clone` moved to an alternative (development) section.
+
 ## [2.2.1] — 2026-09-10
 
 ### Fixed
@@ -61,6 +66,7 @@ Baseline commit `2bfb9d8` ("Initial commit: course-archiver v2"). Since then:
 - Cookie file auto-regenerated on "Netscape format" error.
 - Docs split into English (default) + Portuguese with expanded content and module map.
 
+[2.2.2]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.2.2
 [2.2.1]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.2.1
 [2.2.0]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.2.0
 [2.1.0]: https://github.com/joaocaetanoramos/course-archiver/releases/tag/v2.1.0

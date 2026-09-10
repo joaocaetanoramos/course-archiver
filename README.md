@@ -80,12 +80,10 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 
 ## Installation
 
-### Recommended: install as a CLI tool (run `course-archiver` from anywhere)
+### Recommended: install from PyPI
 
 ```bash
-git clone https://github.com/joaocaetanoramos/course-archiver.git
-cd course-archiver
-pip install .
+pip install course-archiver
 ```
 
 This installs the `course-archiver` command on your `PATH` (typically `~/.local/bin`), so you can run it from any directory:
@@ -94,37 +92,26 @@ This installs the `course-archiver` command on your `PATH` (typically `~/.local/
 course-archiver --cookies /path/to/cookie.txt "<COURSE_URL>"
 ```
 
-Dependencies (Python packages + `ffmpeg`) are installed automatically.
+Dependencies (Python packages) are installed automatically. See [Requirements](#requirements) for `ffmpeg`.
 
-### Alternative: run from source without installing
+### Alternative: install from source (for development)
 
 ```bash
 git clone https://github.com/joaocaetanoramos/course-archiver.git
 cd course-archiver
-pip install -r requirements.txt
-python extrator.py --cookies cookie.txt "<COURSE_URL>"
+pip install -e .
 ```
 
 ### Requirements
 
 - **Python 3.10+**
 - **ffmpeg** (`sudo dnf install ffmpeg` / `brew install ffmpeg` / `apt install ffmpeg` / `pip install static-ffmpeg`)
-- **pycryptodomex** (installed automatically via `pip install .` or `pip install -r requirements.txt`) — used for native AES-128 HLS decryption.
+- **pycryptodomex** (installed automatically via `pip install course-archiver` or `pip install -e .`) — used for native AES-128 HLS decryption.
 
 ### Updating
 
-If you installed via `pip install .` from a local clone:
-
 ```bash
-cd /path/to/course-archiver
-git pull
-pip install --upgrade .
-```
-
-If you installed directly from GitHub (no clone):
-
-```bash
-pip install --upgrade --force-reinstall "git+https://github.com/joaocaetanoramos/course-archiver.git"
+pip install --upgrade course-archiver
 ```
 
 To check the installed version:
@@ -133,16 +120,7 @@ To check the installed version:
 pip show course-archiver
 ```
 
-If you run from source without installing:
-
-```bash
-cd /path/to/course-archiver
-git pull
-```
-
-Every release is published as a **GitHub Release** (with a `vX.Y.Z` tag) — see [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
-
-(Run `pip install -r requirements.txt` again only if the dependencies change.)
+Every release is published as a **GitHub Release** (with a `vX.Y.Z` tag) and on **[PyPI](https://pypi.org/project/course-archiver/)** — see [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 ## How to obtain the cookie
 
