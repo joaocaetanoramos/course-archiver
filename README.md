@@ -140,6 +140,8 @@ cd /path/to/course-archiver
 git pull
 ```
 
+Every release is published as a **GitHub Release** (with a `vX.Y.Z` tag) — see [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
 (Run `pip install -r requirements.txt` again only if the dependencies change.)
 
 ## How to obtain the cookie

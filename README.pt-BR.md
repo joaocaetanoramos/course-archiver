@@ -142,6 +142,8 @@ git pull
 
 (Rode `pip install -r requirements.txt` novamente só se as dependências mudarem.)
 
+Cada versão é publicada como uma **GitHub Release** (com tag `vX.Y.Z`) — veja [CHANGELOG.md](CHANGELOG.md) para o que mudou em cada versão.
+
 ## Como obter o cookie
 
 A ferramenta **exige** o cookie da sua sessão logada. A autenticação é sua responsabilidade — a ferramenta nunca embute credenciais.
