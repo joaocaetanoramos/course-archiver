@@ -58,7 +58,7 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 - 🎥 **Multi-host video support** — Bunny Stream, PandaVideo, Scaleup (Smart Player), Hotmart AES-128 HLS, YouTube, direct m3u8 / mp4 — all routed through the same download path.
 - ⚡ **Parallel downloads** — concurrent segment fetches per video (`--concurrent`) and concurrent lessons (`--parallel`).
 - 🔁 **Resilient** — automatic retry with exponential backoff for transient network errors; auto-throttles `concurrent` when the server resets connections; auto-regenerates the cookie file on the rare "Netscape format" error.
-- 📁 **Organized output** — `downloads/<platform>/<course>/<module>/NN - Lesson X.mp4` with embedded title/album/artist/comment metadata.
+- 📁 **Organized output** — `course-archiver/<platform>/<course>/<module>/NN - Lesson X.mp4` with embedded title/album/artist/comment metadata.
 - 🪶 **Lossless** — direct remux (`-c copy`) to MP4. No re-encoding, no quality loss.
 - 💻 **Clean CLI** — rich-powered progress bars (no overlap), colored status lines, per-chapter headers.
 - 📊 **Size & duration estimates** — every `--ls` listing shows per-lesson size/duration plus per-chapter, per-course and grand totals; the download bar shows total size, speed, elapsed and ETA. Fully generic (probes the resolved stream: HLS bandwidth × `EXTINF` durations, or `Content-Range` for direct URLs), so it works for current and future platforms without changes. Best-effort — unknown values print `n/d` (e.g. YouTube).
@@ -194,7 +194,7 @@ course-archiver --cookies cookie.txt "<URL>" --ls
 |---|---|---|
 | `url` | URL of the dashboard, course or lesson (positional, **required**) | — |
 | `--cookies` `PATH` | Cookie file (JSON / Netscape) or raw `Cookie:` header (**required**) | — |
-| `--output` `DIR` | Output directory | `./downloads` |
+| `--output` `DIR` | Output directory | `./course-archiver` |
 | `--parallel` `N` | Number of lessons downloaded concurrently | `1` |
 | `--concurrent` `N` | HLS fragments downloaded in parallel **per video** | `8` |
 | `--retries` `N` | Retries per lesson on transient network errors | `3` |
@@ -245,7 +245,7 @@ Supported languages today: **English** (default) and **Portuguese**. Messages ar
 Files are organized by **platform → course → module (chapter) → lesson**:
 
 ```
-downloads/
+course-archiver/
 └── memberkit/
     └── <Course Name>/
         └── <Module Name>/
@@ -341,7 +341,7 @@ lib/
            |
            v
 +--------------------+
-| 7. Save to downloads/<group>/<course>/<chapter>/<NN> - <title>.mp4
+| 7. Save to course-archiver/<group>/<course>/<chapter>/<NN> - <title>.mp4
 |    and download attachments into <chapter>/Anexos/ (name+size dedup; links → .url)
 +--------------------+
 ```

@@ -668,7 +668,7 @@ def main():
     parser = argparse.ArgumentParser(description=i18n.t("cli.description"))
     parser.add_argument("url", help=i18n.t("cli.url_help"))
     parser.add_argument("--cookies", help=i18n.t("cli.cookies_help"))
-    parser.add_argument("--output", default="./downloads", help=i18n.t("cli.output_help"))
+    parser.add_argument("--output", default="./course-archiver", help=i18n.t("cli.output_help"))
     parser.add_argument("--parallel", type=int, default=1, help=i18n.t("cli.parallel_help"))
     parser.add_argument("--concurrent", type=int, default=8, help=i18n.t("cli.concurrent_help"))
     parser.add_argument("--retries", type=int, default=3, help=i18n.t("cli.retries_help"))

@@ -10,9 +10,7 @@ from rich.progress import (
     SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
-    TimeElapsedColumn,
     TimeRemainingColumn,
-    TransferSpeedColumn,
 )
 
 console = Console()
@@ -34,15 +32,11 @@ def _get_progress():
                     TextColumn("·"),
                     FileSizeColumn(),
                     TextColumn("·"),
-                    TransferSpeedColumn(),
-                    TextColumn("·"),
-                    TimeElapsedColumn(),
-                    TextColumn("·"),
                     TimeRemainingColumn(),
                     console=console,
                     expand=False,
                     transient=True,
-                    speed_estimate_period=10.0,
+                    speed_estimate_period=5.0,
                 )
                 _progress.start()
                 atexit.register(_progress.stop)
@@ -92,7 +86,12 @@ class ProgressBar:
 
     def update_to(self, value):
         with _write_lock:
-            _get_progress().update(self.task_id, completed=value)
+            progress = _get_progress()
+            if value >= self.total:
+                self.total = int(value * 2) if value else 1
+                progress.update(self.task_id, total=self.total, completed=value)
+            else:
+                progress.update(self.task_id, completed=value)
 
     def close(self):
         progress = _get_progress()

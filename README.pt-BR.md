@@ -58,7 +58,7 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 - 🎥 **Suporte multi-host de vídeo** — Bunny Stream, PandaVideo, Scaleup (Smart Player), Hotmart AES-128 HLS, YouTube, m3u8 / mp4 diretos — todos pela mesma rota de download.
 - ⚡ **Downloads paralelos** — segmentos em paralelo por vídeo (`--concurrent`) e aulas em paralelo (`--parallel`).
 - 🔁 **Resiliente** — retry automático com backoff exponencial para erros de rede transitórios; auto-reduz `concurrent` quando o servidor reseta conexões; auto-regenera o arquivo de cookie no raro erro "Netscape format".
-- 📁 **Saída organizada** — `downloads/<plataforma>/<curso>/<módulo>/NN - Aula X.mp4` com metadados título/curso/grupo embutidos.
+- 📁 **Saída organizada** — `course-archiver/<plataforma>/<curso>/<módulo>/NN - Aula X.mp4` com metadados título/curso/grupo embutidos.
 - 🪶 **Lossless** — remux direto (`-c copy`) para MP4. Sem re-encoding, sem perda de qualidade.
 - 💻 **CLI limpo** — barras de progresso com rich (sem sobreposição), linhas de status coloridas, headers por capítulo.
 - 📊 **Estimativa de tamanho e duração** — todo `--ls` mostra tamanho/duração por aula além dos totais por capítulo, por curso e de todos os cursos juntos; a barra de download mostra tamanho total, velocidade, tempo decorrido e ETA. Totalmente genérico (sonda o stream resolvido: HLS via bandwidth × duração `EXTINF`, ou `Content-Range` para URLs diretas), funcionando para plataformas atuais e futuras sem mudanças. Best-effort — valores desconhecidos aparecem como `n/d` (ex.: YouTube).
@@ -194,7 +194,7 @@ course-archiver --cookies cookie.txt "<URL>" --ls
 |---|---|---|
 | `url` | URL do dashboard, curso ou aula (posicional, **obrigatório**) | — |
 | `--cookies` `CAMINHO` | Arquivo de cookies (JSON / Netscape) ou string `Cookie:` crua (**obrigatório**) | — |
-| `--output` `DIR` | Diretório de saída | `./downloads` |
+| `--output` `DIR` | Diretório de saída | `./course-archiver` |
 | `--parallel` `N` | Número de aulas baixadas em paralelo | `1` |
 | `--concurrent` `N` | Fragmentos HLS baixados em paralelo **por vídeo** | `8` |
 | `--retries` `N` | Tentativas por aula em erros de rede transitórios | `3` |
@@ -245,7 +245,7 @@ Idiomas suportados hoje: **inglês** (padrão) e **português**. As mensagens fi
 Os arquivos são organizados por **plataforma → curso → módulo (capítulo) → aula**:
 
 ```
-downloads/
+course-archiver/
 └── memberkit/
     └── <Nome do Curso>/
         └── <Nome do Módulo>/
@@ -341,7 +341,7 @@ lib/
            |
            v
 +--------------------+
-| 7. Salva em downloads/<grupo>/<curso>/<capítulo>/<NN> - <título>.mp4
+| 7. Salva em course-archiver/<grupo>/<curso>/<capítulo>/<NN> - <título>.mp4
 |    e baixa anexos em <capítulo>/Anexos/ (dedup nome+tamanho; links → .url)
 +--------------------+
 ```

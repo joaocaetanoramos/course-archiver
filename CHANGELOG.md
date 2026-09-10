@@ -17,7 +17,9 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/); vers
 - **Lesson descriptions on Memberkit** — when a lesson has a description (text + links), it's saved as `Anexos/Descrição - <Lesson Title>.txt`.
 
 ### Changed
-- **Output layout — platform-first** — downloads are now organized as `downloads/<platform>/<course>/<module>/` (e.g. `downloads/memberkit/...`), so courses and their modules no longer mix; Astron no longer creates a category folder (platform → course directly).
+- **Output layout — platform-first** — downloads are now organized as `course-archiver/<platform>/<course>/<module>/` (e.g. `course-archiver/memberkit/...`), so courses and their modules no longer mix; Astron no longer creates a category folder (platform → course directly).
+- **Default output folder** — renamed from `./downloads` to `./course-archiver`.
+- **Download bar** — now shows only `percentage · downloaded size · estimated time remaining` (dropped the transfer-speed and elapsed columns); the ETA column no longer locks into `0:00:00` when the initial size estimate undershoots the real file — the total grows with the download instead of the task being marked finished early.
 
 ## [2.2.0] — 2026-09-10
 
