@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "course-archiver"
-version = "2.2.0"
+version = "2.2.1"
 description = "Download online course videos for offline viewing using your own session cookie."
 readme = "README.md"
 requires-python = ">=3.10"

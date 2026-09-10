@@ -6,6 +6,8 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/); vers
 
 ## [Unreleased]
 
+## [2.2.1] — 2026-09-10
+
 ### Fixed
 - **Downloads over unstable networks** — each retry now re-extracts the video and re-resolves the stream with a fresh URL/token, instead of retrying the same (already-expired) HLS URL that caused `ConnectionResetError` on long downloads.
 - **Console output races** — writes are serialized with a reentrant lock (a nested acquisition previously dead-locked the very first progress bar), and progress bars are `transient` so they no longer overwrite/erase chapter-summary lines while other threads print.
