@@ -58,12 +58,12 @@ Assistir cursos online exige conexão estável, e a maioria das plataformas não
 - 🎥 **Suporte multi-host de vídeo** — Bunny Stream, PandaVideo, Scaleup (Smart Player), Hotmart AES-128 HLS, YouTube, m3u8 / mp4 diretos — todos pela mesma rota de download.
 - ⚡ **Downloads paralelos** — segmentos em paralelo por vídeo (`--concurrent`) e aulas em paralelo (`--parallel`).
 - 🔁 **Resiliente** — retry automático com backoff exponencial para erros de rede transitórios; auto-reduz `concurrent` quando o servidor reseta conexões; auto-regenera o arquivo de cookie no raro erro "Netscape format".
-- 📁 **Saída organizada** — `downloads/<grupo>/<curso>/NN - Aula X.Y.mp4` com metadados título/curso/grupo embutidos.
+- 📁 **Saída organizada** — `downloads/<plataforma>/<curso>/<módulo>/NN - Aula X.mp4` com metadados título/curso/grupo embutidos.
 - 🪶 **Lossless** — remux direto (`-c copy`) para MP4. Sem re-encoding, sem perda de qualidade.
 - 💻 **CLI limpo** — barras de progresso com rich (sem sobreposição), linhas de status coloridas, headers por capítulo.
 - 📊 **Estimativa de tamanho e duração** — todo `--ls` mostra tamanho/duração por aula além dos totais por capítulo, por curso e de todos os cursos juntos; a barra de download mostra tamanho total, velocidade, tempo decorrido e ETA. Totalmente genérico (sonda o stream resolvido: HLS via bandwidth × duração `EXTINF`, ou `Content-Range` para URLs diretas), funcionando para plataformas atuais e futuras sem mudanças. Best-effort — valores desconhecidos aparecem como `n/d` (ex.: YouTube).
 - 🐢 **Consciente de rate limit por padrão** — todo request ao mesmo host é espaçado (intervalo mínimo por host) e uma resposta `429` dispara um cooldown + 1 retry. Se um host responder `429` três vezes seguidas, a sondagem para e as aulas restantes daquele curso mostram `n/d` em vez de o curso inteiro sumir; o próximo curso começa zerado. Ou seja, listagens grandes apenas ficam mais lentas, em vez de falharem.
-- 📎 **Anexos por aula** — além do vídeo, baixa arquivos complementares (PDFs, planilhas, áudios…) de cada aula em uma pasta `Anexos/` dentro do capítulo, com dedup por nome+tamanho; links complementares (`complementaryReadings`) viram atalhos `.url`. Os anexos somam nas estimativas do `--ls` (`+N anexo(s) · X`). Suportado na Hotmart (`v1/pages/{hash}/complementary-content`) e Memberkit (varredura best-effort da página da aula); arquivos com proteção DRM (lambda) são resolvidos automaticamente.
+- 📎 **Anexos por aula** — além do vídeo, baixa arquivos complementares (PDFs, planilhas, áudios…) de cada aula em uma pasta `Anexos/` dentro do capítulo, com dedup por nome+tamanho; links complementares (`complementaryReadings`) viram atalhos `.url`. Os anexos somam nas estimativas do `--ls` (`+N anexo(s) · X`). Suportado na Hotmart (`v1/pages/{hash}/complementary-content`) e Memberkit (varredura best-effort da página da aula); arquivos com proteção DRM (lambda) são resolvidos automaticamente. No Memberkit, a descrição da aula (texto + links, quando existir) também é salva como `Descrição - <Título da Aula>.txt`.
 
 ## Plataformas suportadas
 
@@ -242,21 +242,24 @@ Idiomas suportados hoje: **inglês** (padrão) e **português**. As mensagens fi
 
 ## Estrutura de saída
 
-Os arquivos são organizados por **grupo → curso → aula**:
+Os arquivos são organizados por **plataforma → curso → módulo (capítulo) → aula**:
 
 ```
 downloads/
-└── <Nome do Grupo>/
+└── memberkit/
     └── <Nome do Curso>/
-        └── 01 - Capítulo 1/
+        └── <Nome do Módulo>/
             ├── 01 - Aula 1.1 - Introdução.mp4
             ├── 02 - Aula 1.2 - Conceitos.mp4
             ├── 03 - Trilha: RESUMO (sem vídeo)      # pulado (divisores de trilha)
             ├── 04 - Aula 1.3 - Aprofundamento.mp4
             └── Anexos/                              # materiais complementares das aulas
                 ├── Apostila da aula 1.pdf           # arquivos de cada aula
+                ├── Descrição - Aula 1.1.txt        # descrição da aula (texto + links), quando existir
                 └── Material externo.url             # links complementares (atalho .url)
 ```
+
+Cada plataforma cria sua própria raiz (`hotmart/`, `astron/`, `kiwify/`, `generic/`), seguida do nome do curso e de seus módulos/capítulos. Cursos sem módulos pulam esse nível.
 
 Os anexos de cada aula são baixados em `Anexos/` dentro do capítulo ao qual a aula pertence; arquivos com o mesmo nome+tamanho não são re-baixados em execuções seguintes.
 

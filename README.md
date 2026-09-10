@@ -58,12 +58,12 @@ It is the same model as `yt-dlp --cookies-from-browser` or `Streamlink`, but wit
 - 🎥 **Multi-host video support** — Bunny Stream, PandaVideo, Scaleup (Smart Player), Hotmart AES-128 HLS, YouTube, direct m3u8 / mp4 — all routed through the same download path.
 - ⚡ **Parallel downloads** — concurrent segment fetches per video (`--concurrent`) and concurrent lessons (`--parallel`).
 - 🔁 **Resilient** — automatic retry with exponential backoff for transient network errors; auto-throttles `concurrent` when the server resets connections; auto-regenerates the cookie file on the rare "Netscape format" error.
-- 📁 **Organized output** — `downloads/<group>/<course>/NN - Lesson X.Y.mp4` with embedded title/album/artist/comment metadata.
+- 📁 **Organized output** — `downloads/<platform>/<course>/<module>/NN - Lesson X.mp4` with embedded title/album/artist/comment metadata.
 - 🪶 **Lossless** — direct remux (`-c copy`) to MP4. No re-encoding, no quality loss.
 - 💻 **Clean CLI** — rich-powered progress bars (no overlap), colored status lines, per-chapter headers.
 - 📊 **Size & duration estimates** — every `--ls` listing shows per-lesson size/duration plus per-chapter, per-course and grand totals; the download bar shows total size, speed, elapsed and ETA. Fully generic (probes the resolved stream: HLS bandwidth × `EXTINF` durations, or `Content-Range` for direct URLs), so it works for current and future platforms without changes. Best-effort — unknown values print `n/d` (e.g. YouTube).
 - 🐢 **Throttle-aware by default** — every request to the same host is paced (per-host minimum interval) and an HTTP `429` triggers a cooldown + one retry. If a host keeps answering `429` three times in a row, the probe stops and the remaining lessons of that course show `n/d` instead of the whole course disappearing; the next course starts fresh. So large listings just get slower instead of failing.
-- 📎 **Per-lesson attachments** — besides the video, downloads each lesson's supplementary files (PDFs, spreadsheets, audio…) into an `Anexos/` folder inside the chapter, with name+size dedup; complementary links (`complementaryReadings`) become `.url` shortcuts. Attachments are counted in `--ls` estimates (`+N anexo(s) · X`). Supported on Hotmart (`v1/pages/{hash}/complementary-content`) and Memberkit (best-effort scan of the lesson page); DRM-protected (lambda) files are resolved automatically.
+- 📎 **Per-lesson attachments** — besides the video, downloads each lesson's supplementary files (PDFs, spreadsheets, audio…) into an `Anexos/` folder inside the chapter, with name+size dedup; complementary links (`complementaryReadings`) become `.url` shortcuts. Attachments are counted in `--ls` estimates (`+N anexo(s) · X`). Supported on Hotmart (`v1/pages/{hash}/complementary-content`) and Memberkit (best-effort scan of the lesson page); DRM-protected (lambda) files are resolved automatically. On Memberkit, the lesson description (text + links, when present) is also saved as `Descrição - <Lesson Title>.txt`.
 
 ## Supported platforms
 
@@ -242,21 +242,24 @@ Supported languages today: **English** (default) and **Portuguese**. Messages ar
 
 ## Output structure
 
-Files are organized by **group → course → lesson**:
+Files are organized by **platform → course → module (chapter) → lesson**:
 
 ```
 downloads/
-└── <Group Name>/
+└── memberkit/
     └── <Course Name>/
-        └── 01 - Chapter 1/
+        └── <Module Name>/
             ├── 01 - Aula 1.1 - Introduction.mp4
             ├── 02 - Aula 1.2 - Concepts.mp4
             ├── 03 - Trilha: SUMMARY (sem vídeo)      # skipped (Trilha/track dividers)
             ├── 04 - Aula 1.3 - Deep dive.mp4
             └── Anexos/                              # lessons' supplementary materials
                 ├── Lesson 1 handout.pdf            # each lesson's files
+                ├── Descrição - Aula 1.1.txt        # lesson description (text + links), when present
                 └── External material.url            # complementary links (.url shortcut)
 ```
+
+Other platforms create their own roots (`hotmart/`, `astron/`, `kiwify/`, `generic/`), each followed by the course name and its modules/chapters. Courses without modules skip that level.
 
 Each chapter's attachments are downloaded into `Anexos/` inside that chapter's folder; files with the same name+size are not re-downloaded on subsequent runs.
 

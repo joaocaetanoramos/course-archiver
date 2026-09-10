@@ -14,6 +14,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/); vers
 
 ### Added
 - **Partial resume** — a failed download keeps its `.part`/`.dl` files (per-attempt, and after the final retry) so a re-run resumes instead of starting over; successful downloads still clean up.
+- **Lesson descriptions on Memberkit** — when a lesson has a description (text + links), it's saved as `Anexos/Descrição - <Lesson Title>.txt`.
+
+### Changed
+- **Output layout — platform-first** — downloads are now organized as `downloads/<platform>/<course>/<module>/` (e.g. `downloads/memberkit/...`), so courses and their modules no longer mix; Astron no longer creates a category folder (platform → course directly).
 
 ## [2.2.0] — 2026-09-10
 

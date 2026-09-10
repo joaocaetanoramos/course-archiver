@@ -157,8 +157,9 @@ class AstronPlatform(Platform):
                 "id": lesson_id,
                 "title": title,
                 "url": f"{course['url']}/{lesson_id}",
-                "group": course["group"],
+                "group": "",
                 "chapter": course_title,
+                "course_title": course_title,
             })
         return lessons
 
@@ -243,6 +244,7 @@ class HotmartPlatform(Platform):
                     "url": f"https://consumer.hotmart.com/pt-br/club/{course['slug']}/products/{course['product_id']}/content/{page.get('hash')}",
                     "group": course["group"],
                     "chapter": module_name,
+                    "course_title": course["title"],
                     "_hash": page.get("hash"),
                     "_slug": course["slug"],
                     "_product_id": course["product_id"],
@@ -383,6 +385,7 @@ class KiwifyPlatform(Platform):
                         "url": f"https://dashboard.kiwify.com/course_premium/{cid}",
                         "group": course["group"],
                         "chapter": module_name,
+                        "course_title": course["title"],
                         "_course_id": cid,
                     })
         return lessons
@@ -504,6 +507,7 @@ class MemberkitPlatform(Platform):
                     "url": base + str(a["href"]),
                     "group": course["group"],
                     "chapter": module_title or course["title"],
+                    "course_title": course["title"],
                 })
         return lessons
 
@@ -531,7 +535,6 @@ class MemberkitPlatform(Platform):
         except Exception:
             return []
         soup = BeautifulSoup(html, "html.parser")
-        soup = BeautifulSoup(html, "html.parser")
         out = []
         seen = set()
         for a in soup.select("a[href]"):
@@ -549,7 +552,52 @@ class MemberkitPlatform(Platform):
                 "size": None,
                 "url": urljoin(lesson["url"], href),
             })
+        desc_text = self._lesson_description(soup)
+        if desc_text:
+            out.append({"kind": "descricao", "name": "Descrição", "content": desc_text})
         return out
+
+    def _render_inline(self, node):
+        from bs4 import NavigableString, Tag
+
+        parts = []
+        for child in node.children:
+            if isinstance(child, NavigableString):
+                parts.append(str(child))
+            elif isinstance(child, Tag):
+                if child.name == "br":
+                    parts.append("\n")
+                elif child.name == "a":
+                    href = child.get("href") or ""
+                    text = child.get_text(" ", strip=True)
+                    if text and href:
+                        if text.startswith("[") and text.endswith("]"):
+                            parts.append(f"{text}({href})")
+                        else:
+                            parts.append(f"[{text}]({href})")
+                    else:
+                        parts.append(text or href)
+                else:
+                    parts.append(self._render_inline(child))
+        return "".join(parts)
+
+    def _lesson_description(self, soup):
+        desc = soup.select_one("div.prose")
+        if desc is None:
+            return None
+        blocks = []
+        for el in desc.find_all(recursive=False):
+            if el.name in ("p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote"):
+                text = self._render_inline(el).strip()
+                if text:
+                    blocks.append(text)
+            elif el.name in ("ul", "ol"):
+                for li in el.find_all("li", recursive=False):
+                    text = self._render_inline(li).strip()
+                    if text:
+                        blocks.append("- " + text)
+        text = "\n\n".join(blocks)
+        return text or None
 
     def resolve_material_file(self, item, lesson, session):
         return item["url"], {}

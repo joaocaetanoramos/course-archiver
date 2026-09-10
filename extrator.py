@@ -52,6 +52,23 @@ def sanitize_filename(name):
     return name or "sem-titulo"
 
 
+def lesson_dir_parts(output_dir, platform, course, lesson):
+    platform_folder = sanitize_filename(platform.name)
+    course_folder = sanitize_filename(
+        lesson.get("course_title") or course.get("title") or course.get("id") or "curso"
+    )
+    group = (lesson.get("group") or "").strip()
+    chapter = (lesson.get("chapter") or "").strip()
+
+    parts = [str(output_dir), platform_folder]
+    if group:
+        parts.append(sanitize_filename(group))
+    parts.append(course_folder)
+    if chapter and sanitize_filename(chapter) != course_folder:
+        parts.append(sanitize_filename(chapter))
+    return parts
+
+
 class App:
     LS_LEVELS = ("courses", "chapters", "lessons")
 
@@ -464,11 +481,7 @@ class App:
         group = lesson.get("group") or ""
         chapter = lesson.get("chapter") or course.get("title") or ""
 
-        parts = [str(self.output_dir)]
-        if group:
-            parts.append(sanitize_filename(group))
-        if chapter:
-            parts.append(sanitize_filename(chapter))
+        parts = lesson_dir_parts(self.output_dir, platform, course, lesson)
         lesson_dir = Path(*parts)
         base_name = f"{idx:02d} - {sanitize_filename(lesson['title'])}"
         dest_mp4 = lesson_dir / (base_name + ".mp4")
@@ -594,6 +607,21 @@ class App:
                     name = materials.sanitize_material_name(item.get("name") or "link") + ".url"
                     materials.write_url_shortcut(anexos_dir / name, item["url"])
                     out["anexo_links"] += 1
+                    continue
+                if item.get("kind") == "descricao":
+                    anexos_dir.mkdir(parents=True, exist_ok=True)
+                    dest_name = f"Descrição - {sanitize_filename(lesson['title'])}.txt"
+                    dest = anexos_dir / dest_name
+                    if dest.exists():
+                        continue
+                    payload = (item.get("content") or "").strip() + "\n"
+                    n = dest.write_text(payload, encoding="utf-8")
+                    out["anexos"] += 1
+                    out["anexo_size"] += n
+                    print_line(i18n.t(
+                        "ui.anexo_line", name=dest.name,
+                        size=estimate.format_bytes(n)
+                    ))
                     continue
                 name = materials.sanitize_material_name(item.get("name"))
                 dest, exists = materials.unique_path(anexos_dir, name, item.get("size"))
